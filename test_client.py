@@ -8,18 +8,37 @@ import numpy as np
 unity_api = Unity(11000)
 unity_api.connect()
 
+error_arr = np.zeros(5)
+time = time.time()
 
-# def PID(error, p=0.35, i=0, d=0.01):
-#     self.error_arr[1:] = self.error_arr[0:-1]
-#     self.error_arr[0] = error
-#     P = error * self.p
-#     delta_t = time.time() - self.time
-#     D = (error - self.error_arr[1]) / delta_t * self.d
-#     I = np.sum(self.error_arr) * delta_t * self.i
-#     angle = P + I + D
-#     if abs(angle) > 5:
-#         angle = np.sign(angle) * 40
-#     return int(angle)
+
+def findingLane(mask):
+    arr_normal = []
+    height = 18
+    lineRow = mask[height, :]
+    for x, y in enumerate(lineRow):
+        if y == 255:
+            arr_normal.append(x)
+    minLane = min(arr_normal)
+    maxLane = max(arr_normal)
+    return minLane, maxLane
+
+
+def control(angle_left, angle_right):
+    pass
+
+
+def PID(error, p=0.35, i=0, d=0.01):
+    error_arr[1:] = error_arr[0:-1]
+    error_arr[0] = error
+    P = error * p
+    delta_t = time.time() - time
+    D = (error - error_arr[1]) / delta_t * d
+    I = np.sum(error_arr) * delta_t * i
+    angle = P + I + D
+    if abs(angle) > 5:
+        angle = np.sign(angle) * 40
+    return int(angle)
 
 
 def convertGreen2White(left_image, right_image):
