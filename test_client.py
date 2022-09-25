@@ -9,7 +9,6 @@ unity_api = Unity(11000)
 unity_api.connect()
 
 error_arr = np.zeros(5)
-time = time.time()
 
 
 def findingLane(mask):
@@ -26,6 +25,29 @@ def findingLane(mask):
 
 def control(angle_left, angle_right):
     pass
+
+
+def is_contour_bad(c):
+    # approximate the contour
+    peri = cv2.arcLength(c, True)
+    approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+    # the contour is 'bad' if it is not a rectangle
+    return not len(approx) == 0
+
+
+def removeNoise(image):
+    edged = cv2.Canny(image, 50, 100)
+    cnts = cv2.findContours(edged.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = imutils.grab_contours(cnts)
+    mask = np.ones(image.shape[:2], dtype="uint8") * 255
+    no = cv2.bitwise_not(image)
+    # loop over the contours
+    for c in cnts:
+        if is_contour_bad(c):
+            cv2.drawContours(mask, [c], -1, 0, -1)
+    image = cv2.bitwise_or(no, no, mask=mask)
+    image = cv2.bitwise_not(image)
+    return image
 
 
 def PID(error, p=0.35, i=0, d=0.01):
@@ -67,8 +89,6 @@ def removeSmallContours(mask):
 
 def main():
     while True:
-        data = unity_api.set_speed_angle(150, 0)  # speed: [0:150], angle: [-25:25]
-        print(data)
         start_time = time.time()
         left_image, right_image = unity_api.get_images()
         kernel = np.ones((15, 15), np.uint8)
@@ -79,6 +99,8 @@ def main():
         right_image = removeSmallContours(right_image)
         print("time: ", 1 / (time.time() - start_time))
         unity_api.show_images(left_image, right_image)
+        data = unity_api.set_speed_angle(150, 0)  # speed: [0:150], angle: [-25:25]
+        # print(data)
 
 
 if __name__ == "__main__":
