@@ -9,12 +9,13 @@ unity_api = Unity(11000)
 unity_api.connect()
 
 error_arr = np.zeros(5)
+list_image = np.zeros(5)
 t = time.time()
 
 
 def findingLane(mask):
     arr_normal = []
-    height = mask.shape[0] - 1
+    height = mask.shape[0] - 50
     lineRow = mask[height, :]
     for x, y in enumerate(lineRow):
         if y == 255:
@@ -36,9 +37,13 @@ def bird_view(image):
 
 
 def control(image):
+    MAX_SPEED = 50
     error = findingLane(image)
     angle = PID(error)
-    speed = 150
+    speed = 18
+    # if angle < -4 or angle > 4:
+    #     speed = 6
+    #     angle = angle * 4 / 10
     return angle, speed
 
 
@@ -58,14 +63,14 @@ def removeNoise(image):
     no = cv2.bitwise_not(image)
     # loop over the contours
     for c in cnts:
-        if is_contour_bad(c):
-            cv2.drawContours(mask, [c], -1, 0, -1)
+        # if is_contour_bad(c):
+        cv2.drawContours(mask, [c], -1, 0, -1)
     image = cv2.bitwise_or(no, no, mask=mask)
     image = cv2.bitwise_not(image)
     return image
 
 
-def PID(error, p=0.35, i=0, d=0.01):
+def PID(error, p=0.15, i=0, d=0.01):
     global t
     global error_arr
     error_arr[1:] = error_arr[0:-1]
@@ -78,7 +83,7 @@ def PID(error, p=0.35, i=0, d=0.01):
     angle = P + I + D
     if abs(angle) > 5:
         angle = np.sign(angle) * 40
-    return - int(angle) * 15 / 50
+    return - int(angle) * 23 / 50
 
 
 def convertGreen2White(left_image, right_image):
@@ -105,20 +110,42 @@ def removeSmallContours(mask):
     return image_remove
 
 
+def getDynamicallyAverageImage(image):
+    global list_image
+    list_image[1:] = list_image[0:-1]
+    list_image[0] = image
+    avg_image = list_image[0]
+    for i in range(len(list_image)):
+        if i == 0:
+            pass
+        else:
+            alpha = 1.0 / (i + 1)
+            beta = 1.0 - alpha
+            avg_image = cv2.addWeighted(list_image[i], alpha, avg_image, beta, 0.0)
+    return avg_image
+
+
 def main():
     while True:
         start_time = time.time()
+        '''-----------------------Image Processing----------------------------'''
         left_image, right_image = unity_api.get_images()
         kernel = np.ones((15, 15), np.uint8)
+        left_image, right_image = convertGreen2White(left_image, right_image)
+        left_image = removeNoise(left_image)
+        right_image = removeNoise(right_image)
         left_image = cv2.dilate(left_image, kernel, iterations=1)
         right_image = cv2.dilate(right_image, kernel, iterations=1)
-        left_image, right_image = convertGreen2White(left_image, right_image)
+        # left_image = cv2.threshold(left_image, 45, 255, cv2.THRESH_BINARY)[1]
+        # right_image = cv2.threshold(right_image, 45, 255, cv2.THRESH_BINARY)[1]
+        # left_image = cv2.erode(left_image, None, iterations=5)
+        # right_image = cv2.erode(right_image, None, iterations=5)
         left_image = removeSmallContours(left_image)
         right_image = removeSmallContours(right_image)
         print("time: ", 1 / (time.time() - start_time))
         unity_api.show_images(left_image, right_image)
         image = np.concatenate((left_image, right_image), axis=1)
-        print(image.shape)
+        # image = getDynamicallyAverageImage(image)
         cv2.imshow('Predicted Image', image)
         '''--------------------------Controller--------------------------------'''
         angle, speed = control(image)
