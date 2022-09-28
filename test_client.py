@@ -9,22 +9,37 @@ unity_api = Unity(11000)
 unity_api.connect()
 
 error_arr = np.zeros(5)
+t = time.time()
 
 
 def findingLane(mask):
     arr_normal = []
-    height = 18
+    height = mask.shape[0] - 1
     lineRow = mask[height, :]
     for x, y in enumerate(lineRow):
         if y == 255:
             arr_normal.append(x)
     minLane = min(arr_normal)
     maxLane = max(arr_normal)
-    return minLane, maxLane
+    center = int((minLane + maxLane) / 2)
+    error = int(mask.shape[1] / 2) - center
+    return error
 
 
-def control(angle_left, angle_right):
-    pass
+def bird_view(image):
+    width, height = 150, 600
+    pts1 = np.float32([[0, 100], [300, 100], [0, 200], [300, 200]])
+    pts2 = np.float32([[0, 0], [width, 0], [0, height], [width, height]])
+    matrix = cv2.getPerspectiveTransform(pts1, pts2)
+    birdview = cv2.warpPerspective(image, matrix, (height, width))
+    return birdview
+
+
+def control(image):
+    error = findingLane(image)
+    angle = PID(error)
+    speed = 150
+    return angle, speed
 
 
 def is_contour_bad(c):
@@ -51,16 +66,19 @@ def removeNoise(image):
 
 
 def PID(error, p=0.35, i=0, d=0.01):
+    global t
+    global error_arr
     error_arr[1:] = error_arr[0:-1]
     error_arr[0] = error
     P = error * p
-    delta_t = time.time() - time
+    delta_t = time.time() - t
+    t = time.time()
     D = (error - error_arr[1]) / delta_t * d
     I = np.sum(error_arr) * delta_t * i
     angle = P + I + D
     if abs(angle) > 5:
         angle = np.sign(angle) * 40
-    return int(angle)
+    return - int(angle) * 15 / 50
 
 
 def convertGreen2White(left_image, right_image):
@@ -99,8 +117,13 @@ def main():
         right_image = removeSmallContours(right_image)
         print("time: ", 1 / (time.time() - start_time))
         unity_api.show_images(left_image, right_image)
-        data = unity_api.set_speed_angle(150, 0)  # speed: [0:150], angle: [-25:25]
-        # print(data)
+        image = np.concatenate((left_image, right_image), axis=1)
+        print(image.shape)
+        cv2.imshow('Predicted Image', image)
+        '''--------------------------Controller--------------------------------'''
+        angle, speed = control(image)
+        data = unity_api.set_speed_angle(speed, angle)  # speed: [0:150], angle: [-25:25]
+        print(data)
 
 
 if __name__ == "__main__":
