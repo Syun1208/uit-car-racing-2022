@@ -205,7 +205,7 @@ def main():
         cv2.imshow('Predicted Image', image)
         '''--------------------------Controller--------------------------------'''
         angle, speed = control(image)
-        computeArea(image)
+        # computeArea(image)
         image = ROIStraight(image)
         # plt.imshow(image)
         # plt.show()
