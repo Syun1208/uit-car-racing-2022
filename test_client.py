@@ -1,15 +1,20 @@
 from unity_utils.unity_utils import Unity
 import cv2
+from sympy import limit, Symbol
 import time
-import imutils
+# import imutils
+import matplotlib.pyplot as plt
 from PIL import Image
 import numpy as np
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
 
 unity_api = Unity(11000)
 unity_api.connect()
-
+list_area = []
 error_arr = np.zeros(5)
 list_image = np.zeros(5)
+list_angle = np.zeros(5)
 t = time.time()
 
 
@@ -24,7 +29,7 @@ def findingLane(mask):
     maxLane = max(arr_normal)
     center = int((minLane + maxLane) / 2)
     error = int(mask.shape[1] / 2) - center
-    return error
+    return error, minLane, maxLane
 
 
 def bird_view(image):
@@ -36,15 +41,68 @@ def bird_view(image):
     return birdview
 
 
+def computeArea(mask):
+    gray = cv2.GaussianBlur(mask, (7, 7), 0)
+
+    _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY_INV)
+
+    cnts, hier = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    size_elements = 0
+    for cnt in cnts:
+        cv2.drawContours(mask, cnts, -1, (0, 0, 255), 3)
+        size_elements += cv2.contourArea(cnt)
+        list_area.append(cv2.contourArea(cnt))
+    print("Area: ", max(list_area))
+    return max(list_area)
+
+
+def ROIStraight(mask):
+    height = mask.shape[0]
+    width = mask.shape[1]
+    polygon = np.array([
+        [(420, 0), (0, 149), (0, 0)]
+    ])
+    polygon2 = np.array([
+        [(150, 0), (599, 149), (599, 0)]
+    ])
+    cv2.fillPoly(mask, polygon, 0)
+    cv2.fillPoly(mask, polygon2, 0)
+    return mask
+
+
 def control(image):
-    MAX_SPEED = 50
-    error = findingLane(image)
+    area = computeArea(image)
+    if area > 65506.5:
+        image = ROIStraight(image)
+    error, minLane, maxLane = findingLane(image)
+    '''Keep going straight ahead'''
+    # if maxLane > 440:
+    #     speed = 20
+    #     center = int((minLane + maxLane) * 1 / 3)
+    # elif minLane < 150:
+    #     speed = 20
+    #     center = int((minLane + maxLane) * 3 / 4)
+    # else:
+    #     speed = 20
+    #     center = int((minLane + maxLane) / 2)
+    # error = int(image.shape[1] / 2) - center
     angle = PID(error)
-    speed = 18
-    # if angle < -4 or angle > 4:
-    #     speed = 6
-    #     angle = angle * 4 / 10
-    return angle, speed
+    # if -1 <= angle <= 1:
+    #     speed = 30
+    # elif -7 < angle < -1 or 1 < angle < 7:
+    #     speed = 10
+    # else:
+    #     speed = 2
+    # print(error)
+    list_angle[1:] = list_angle[0:-1]
+    list_angle[0] = abs(error)
+    list_angle_train = np.array(list_angle).reshape((-1, 1))
+    speed = np.dot(list_angle, - 0.1) + 20
+    reg = LinearRegression().fit(list_angle_train, speed)
+    # reg = RandomForestRegressor(n_estimators=10, max_depth=2, random_state=0)
+    speed = reg.predict(np.array(list_angle_train))
+
+    return angle, speed[0]
 
 
 def is_contour_bad(c):
@@ -55,19 +113,18 @@ def is_contour_bad(c):
     return not len(approx) == 0
 
 
-def removeNoise(image):
-    edged = cv2.Canny(image, 50, 100)
-    cnts = cv2.findContours(edged.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-    cnts = imutils.grab_contours(cnts)
-    mask = np.ones(image.shape[:2], dtype="uint8") * 255
-    no = cv2.bitwise_not(image)
-    # loop over the contours
-    for c in cnts:
-        # if is_contour_bad(c):
-        cv2.drawContours(mask, [c], -1, 0, -1)
-    image = cv2.bitwise_or(no, no, mask=mask)
-    image = cv2.bitwise_not(image)
-    return image
+# def removeNoise(image):
+#     edged = cv2.Canny(image, 50, 100)
+#     cnts = cv2.findContours(edged.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+#     cnts = imutils.grab_contours(cnts)
+#     mask = np.ones(image.shape[:2], dtype="uint8") * 255
+#     no = cv2.bitwise_not(image)
+#     # loop over the contours
+#     for c in cnts:
+#         cv2.drawContours(mask, [c], -1, 0, -1)
+#     image = cv2.bitwise_or(no, no, mask=mask)
+#     image = cv2.bitwise_not(image)
+#     return image
 
 
 def PID(error, p=0.15, i=0, d=0.01):
@@ -83,7 +140,7 @@ def PID(error, p=0.15, i=0, d=0.01):
     angle = P + I + D
     if abs(angle) > 5:
         angle = np.sign(angle) * 40
-    return - int(angle) * 23 / 50
+    return - int(angle) * 24 / 50
 
 
 def convertGreen2White(left_image, right_image):
@@ -132,8 +189,8 @@ def main():
         left_image, right_image = unity_api.get_images()
         kernel = np.ones((15, 15), np.uint8)
         left_image, right_image = convertGreen2White(left_image, right_image)
-        left_image = removeNoise(left_image)
-        right_image = removeNoise(right_image)
+        # left_image = removeNoise(left_image)
+        # right_image = removeNoise(right_image)
         left_image = cv2.dilate(left_image, kernel, iterations=1)
         right_image = cv2.dilate(right_image, kernel, iterations=1)
         # left_image = cv2.threshold(left_image, 45, 255, cv2.THRESH_BINARY)[1]
@@ -145,11 +202,15 @@ def main():
         print("time: ", 1 / (time.time() - start_time))
         unity_api.show_images(left_image, right_image)
         image = np.concatenate((left_image, right_image), axis=1)
-        # image = getDynamicallyAverageImage(image)
         cv2.imshow('Predicted Image', image)
         '''--------------------------Controller--------------------------------'''
         angle, speed = control(image)
-        data = unity_api.set_speed_angle(speed, angle)  # speed: [0:150], angle: [-25:25]
+        computeArea(image)
+        image = ROIStraight(image)
+        # plt.imshow(image)
+        # plt.show()
+        cv2.imshow('Predicted Image', image)
+        data = unity_api.set_speed_angle(speed, angle)  # speed: [0:100], angle: [-25:25]
         print(data)
 
 
