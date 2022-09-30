@@ -59,14 +59,14 @@ def computeArea(mask):
 def ROIStraight(mask):
     height = mask.shape[0]
     width = mask.shape[1]
-    polygon = np.array([
-        [(420, 0), (0, 149), (0, 0)]
+    polygonRight = np.array([
+        [(450, 0), (0, 149), (0, 0)]
     ])
-    polygon2 = np.array([
+    polygonLeft = np.array([
         [(150, 0), (599, 149), (599, 0)]
     ])
-    cv2.fillPoly(mask, polygon, 0)
-    cv2.fillPoly(mask, polygon2, 0)
+    cv2.fillPoly(mask, polygonRight, 0)
+    cv2.fillPoly(mask, polygonLeft, 0)
     return mask
 
 
@@ -140,7 +140,7 @@ def PID(error, p=0.15, i=0, d=0.01):
     angle = P + I + D
     if abs(angle) > 5:
         angle = np.sign(angle) * 40
-    return - int(angle) * 24 / 50
+    return - int(angle) * 26 / 50
 
 
 def convertGreen2White(left_image, right_image):
