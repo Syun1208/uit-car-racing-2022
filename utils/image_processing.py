@@ -53,7 +53,8 @@ class imageProcessing:
     def mainImageProcessing(self, *args, **kwargs):
         self.__convertGreen2White()
         area = self.__computeArea()
-        self.mask = self.__ROIStraight()
+        if area > 67000:
+            self.mask = self.__ROIStraight()
         kernel = np.ones((15, 15), np.uint8)
         self.mask = cv2.dilate(self.mask, kernel, iterations=1)
         self.mask = self.__removeSmallContours()

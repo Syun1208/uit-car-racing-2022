@@ -41,7 +41,7 @@ class Controller(imageProcessing):
         angle = P + I + D
         if abs(angle) > 5:
             angle = np.sign(angle) * 40
-        return - int(angle) * 26 / 50
+        return - int(angle) * 27 / 50
 
     def __call__(self, *args, **kwargs):
         cv2.imshow('Predicted Image', self.mask)
@@ -50,7 +50,7 @@ class Controller(imageProcessing):
         list_angle[1:] = list_angle[0:-1]
         list_angle[0] = abs(error)
         list_angle_train = np.array(list_angle).reshape((-1, 1))
-        speed = np.dot(list_angle, - 0.1) + 20
+        speed = np.dot(list_angle, - 0.1) + 23
         # reg = LinearRegression().fit(list_angle_train, speed)
         reg = RandomForestRegressor(n_estimators=30, random_state=0).fit(list_angle_train, speed)
         predSpeed = reg.predict(np.array(list_angle_train))
