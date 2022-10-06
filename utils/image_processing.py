@@ -12,10 +12,10 @@ class imageProcessing:
         height = self.mask.shape[0]
         width = self.mask.shape[1]
         polygonRight = np.array([
-            [(450, 0), (0, 150), (0, 0)]
+            [(500, 0), (0, 150), (0, 0)]
         ])
         polygonLeft = np.array([
-            [(150, 0), (600, 150), (600, 0)]
+            [(100, 0), (600, 150), (600, 0)]
         ])
         cv2.fillPoly(self.mask, polygonRight, 0)
         cv2.fillPoly(self.mask, polygonLeft, 0)
@@ -53,7 +53,7 @@ class imageProcessing:
     def mainImageProcessing(self, *args, **kwargs):
         self.__convertGreen2White()
         area = self.__computeArea()
-        if area > 67000:
+        if area >= 70000:
             self.mask = self.__ROIStraight()
         kernel = np.ones((15, 15), np.uint8)
         self.mask = cv2.dilate(self.mask, kernel, iterations=1)

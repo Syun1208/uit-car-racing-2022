@@ -2,6 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="d4a0c060-73f8-4cbb-8a59-4f706897eff2" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_client.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_client.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/utils/controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/controller.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/utils/image_processing.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/image_processing.py" afterDir="false" />
     </list>
@@ -22,17 +25,17 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Project.color&quot;: &quot;404a5b&quot;,
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/long/Desktop/ITCar-PHOLOTINO&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;inlay.hints&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Project.color": "404a5b",
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "last_opened_file_path": "/home/long/Desktop/IDCardDetectionandRecognition",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/tools" />
@@ -60,6 +63,9 @@
       <workItem from="1664597951260" duration="11139000" />
       <workItem from="1664643306881" duration="23000" />
       <workItem from="1664644358866" duration="107000" />
+      <workItem from="1664700337745" duration="2295000" />
+      <workItem from="1664847369536" duration="7000" />
+      <workItem from="1664935637116" duration="16181000" />
     </task>
     <servers />
   </component>
