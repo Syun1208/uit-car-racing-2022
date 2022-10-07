@@ -2,7 +2,6 @@ from unity_utils.unity_utils import Unity
 import time
 import numpy as np
 from utils.controller import Controller
-import tqdm
 unity_api = Unity(11000)
 unity_api.connect()
 
