@@ -52,7 +52,7 @@ class Controller(imageProcessing, Fuzzy):
         angle = self.__optimizeFuzzy(angle)
         # if abs(angle) > 5:
         #     angle = np.sign(angle) * 40
-        return - int(angle) * 29 / 50
+        return - int(angle) * 27 / 50
 
     @staticmethod
     def __fuzzy(speed_car, angle_car):
@@ -80,7 +80,7 @@ class Controller(imageProcessing, Fuzzy):
 
     def __optimizeFuzzy(self, angle):
         angle = self.run_fuzzy_controller(angle)
-        angle = 3.5 * angle
+        angle = 3.2 * angle
         if abs(angle) > 5:
             angle = np.sign(angle) * 40
         return angle
@@ -91,14 +91,23 @@ class Controller(imageProcessing, Fuzzy):
     def __conditionalSpeed(angle, error):
         list_angle[1:] = list_angle[0:-1]
         list_angle[0] = abs(error)
+        print("Error: ", error)
         list_angle_train = np.array(list_angle).reshape((-1, 1))
-        speed = np.dot(list_angle, - 0.1) + 50
+        predSpeed = np.dot(list_angle, - 0.1) + 50
         # reg = LinearRegression().fit(list_angle_train, speed)
-        reg = RandomForestRegressor(n_estimators=30, random_state=1).fit(list_angle_train, speed)
+        reg = RandomForestRegressor(n_estimators=30, random_state=1).fit(list_angle_train, predSpeed)
         predSpeed = reg.predict(np.array(list_angle_train))
-        if angle <= -7 or angle >= 7:
-            predSpeed[0] = 1
-            return angle, predSpeed[0]
+        # if angle <= -5 or angle >= 5:
+        #     predSpeed[0] = 3
+        if error >= 7 or error <= 7:
+            predSpeed[0] = predSpeed[0] - 20
+        #
+        # elif time.time() - t <= 3:
+        #     predSpeed[0] = 100
+        # elif -4 <= angle <= 4:
+        #     predSpeed[0] = 1
+        # if predSpeed[0] > 40:
+        #     predSpeed[0] = 15
         return angle, predSpeed[0]
 
     def __call__(self, *args, **kwargs):
