@@ -9,3 +9,4 @@ scikit-learn~=1.1.2
 scikit-fuzzy~=0.4.2
 pid~=3.0.4
 tqdm~=4.64.1
+tabulate~=0.8.10
