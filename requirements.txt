@@ -1,0 +1,13 @@
+numpy~=1.23.2
+opencv-python==4.6.0.66
+pybind11==2.10.0
+imutils~=0.5.4
+Pillow~=7.0.0
+sympy~=1.11.1
+matplotlib~=3.5.3
+scikit-learn~=1.1.2
+scikit-fuzzy~=0.4.2
+pid~=3.0.4
+tqdm~=4.64.1
+tabulate~=0.8.10
+ipython~=8.5.0
