@@ -10,6 +10,7 @@ from utils.image_processing import imageProcessing
 from skfuzzy import control
 from fuzzy_control.fuzzy import Fuzzy
 import skfuzzy as fuzzy
+from utils.traffic_signs_recognition import trafficSignsRecognition
 
 t = time.time()
 pre_time = time.time()
@@ -22,7 +23,7 @@ class Controller(imageProcessing, Fuzzy):
     def __init__(self, mask):
         super(Controller, self).__init__(mask=mask)
         Fuzzy.__init__(self)
-        self.mask = self.mainImageProcessing()
+        self.mask = imageProcessing.__call__(self)
 
     def findingLane(self, scale=60):
         arr_normal = []
@@ -42,10 +43,10 @@ class Controller(imageProcessing, Fuzzy):
     def computeError(self, center):
         return int(self.mask.shape[1] / 2) - center
 
-    def __PID(self, p=0.15, i=0, d=0.01):
+    @staticmethod
+    def PID(error, p=0.15, i=0, d=0.01):
         global t
         global error_arr
-        error, minLane, maxLane = self.findingLane()
         error_arr[1:] = error_arr[0:-1]
         error_arr[0] = error
         P = error * p
@@ -106,20 +107,19 @@ class Controller(imageProcessing, Fuzzy):
         return angle, predSpeed[0]
 
     def __call__(self, *args, **kwargs):
-        # cv2.imshow('Predicted Image', self.mask)
+        cv2.imshow('Predicted Image', self.mask)
         error, minLane, maxLane = self.findingLane()
-        angle = self.__PID()
+        angle = self.PID(error)
         angle, speed = self.__conditionalSpeed(angle, error)
         print("Speed RF: ", speed)
         return angle, speed
 
 
-class TrafficSigns(Controller):
-    def __init__(self, mask, trafficSigns, speed, angle):
-        super(TrafficSigns, self).__init__(mask)
+class TrafficSignsController(Controller):
+    def __init__(self, mask, trafficSigns, speed):
+        super(TrafficSignsController, self).__init__(mask)
         self.trafficSigns = trafficSigns
         self.speed = speed
-        self.angle = angle
         self.corner = 0
         self.UN_MIN_1 = 30
         self.OV_MIN_1 = 60
@@ -235,4 +235,5 @@ class TrafficSigns(Controller):
             self.trafficSigns, self.center = self.__straight(10, self.MAX_SPEED)
             self.center += 5
         self.error = self.computeError(self.center)
-        return self.trafficSigns, self.speed, self.error, self.corner
+        angle = self.PID(self.error)
+        return self.trafficSigns, self.speed, angle

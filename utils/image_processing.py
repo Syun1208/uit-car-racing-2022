@@ -12,10 +12,10 @@ class imageProcessing:
         height = self.mask.shape[0]
         width = self.mask.shape[1]
         polygonRight = np.array([
-            [(500, 0), (0, 150), (0, 0)]
+            [(450, 0), (0, 150), (0, 0)]
         ])
         polygonLeft = np.array([
-            [(100, 0), (600, 150), (600, 0)]
+            [(150, 0), (600, 150), (600, 0)]
         ])
         cv2.fillPoly(self.mask, polygonRight, 0)
         cv2.fillPoly(self.mask, polygonLeft, 0)
@@ -50,7 +50,7 @@ class imageProcessing:
         self.mask = cv2.threshold(out_gray, 0, 255, cv2.THRESH_OTSU)[1]
         self.mask = self.__removeSmallContours()
 
-    def mainImageProcessing(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs):
         self.__convertGreen2White()
         area = self.__computeArea()
         if area >= 67000:

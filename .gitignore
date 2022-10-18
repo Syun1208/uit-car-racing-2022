@@ -1,3 +1,6 @@
 Demo1_UCR2022_Data/sharedassets0.assets.resS
 Linux
 MapV1
+utils/__pycache__/
+fuzzy_control/__pycache__/
+unity_utils.so
