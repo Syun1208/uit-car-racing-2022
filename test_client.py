@@ -77,7 +77,7 @@ def main():
                     else:
                         carFlag = 0
                     trafficSigns = out_sign
-                controller = Controller(image)
+                controller = Controller(image, trafficSigns)
                 angle, speed = controller()
                 if trafficSigns or trafficSigns != 'none' or trafficSigns != 'unknown':
                     trafficSignsController = TrafficSignsController(image, trafficSigns, speed)

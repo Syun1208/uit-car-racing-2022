@@ -20,8 +20,8 @@ width = np.zeros(10)
 
 
 class Controller(imageProcessing, Fuzzy):
-    def __init__(self, mask):
-        super(Controller, self).__init__(mask=mask)
+    def __init__(self, mask, trafficSigns):
+        super(Controller, self).__init__(mask=mask, trafficSigns=trafficSigns)
         Fuzzy.__init__(self)
         self.mask = imageProcessing.__call__(self)
 
@@ -117,7 +117,7 @@ class Controller(imageProcessing, Fuzzy):
 
 class TrafficSignsController(Controller):
     def __init__(self, mask, trafficSigns, speed):
-        super(TrafficSignsController, self).__init__(mask)
+        super(TrafficSignsController, self).__init__(mask, trafficSigns)
         self.trafficSigns = trafficSigns
         self.speed = speed
         self.corner = 0

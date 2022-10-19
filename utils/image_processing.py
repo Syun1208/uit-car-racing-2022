@@ -5,8 +5,9 @@ list_area = list()
 
 
 class imageProcessing:
-    def __init__(self, mask):
+    def __init__(self, mask, trafficSigns):
         self.mask = mask
+        self.trafficSigns = trafficSigns
 
     def __ROIStraight(self):
         height = self.mask.shape[0]
@@ -53,7 +54,7 @@ class imageProcessing:
     def __call__(self, *args, **kwargs):
         self.__convertGreen2White()
         area = self.__computeArea()
-        if area >= 67000:
+        if area >= 67000 and not self.trafficSigns:
             self.mask = self.__ROIStraight()
         kernel = np.ones((15, 15), np.uint8)
         self.mask = cv2.dilate(self.mask, kernel, iterations=1)
