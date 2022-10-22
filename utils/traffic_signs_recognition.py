@@ -8,6 +8,7 @@ from utils.image_processing import imageProcessing
 class trafficSignsRecognition:
     def __init__(self, mask):
         self.signs = ''
+        self.scale = 320
         self.mask_signs = mask
         self.colourCode = {'straight': [[0, 0, 254], [0, 0, 255]], 'no_straight': [[254, 0, 175], [255, 0, 180]],
                            'turn_left': [[0, 254, 0], [0, 254, 0]], 'no_left': [[0, 254, 254], [0, 255, 255]],
@@ -25,7 +26,7 @@ class trafficSignsRecognition:
 
         for pic, contour in enumerate(contours):
             area = cv2.contourArea(contour)
-            if area > 300:
+            if area > self.scale:
                 self.signs = 'straight'
         # turn_right
         turn_right_lower = np.array([254, 0, 0], np.uint8)
@@ -38,7 +39,7 @@ class trafficSignsRecognition:
 
         for pic, contour in enumerate(contours):
             area = cv2.contourArea(contour)
-            if area > 300:
+            if area > self.scale:
                 self.signs = 'turn_right'
 
         # turn_left
@@ -52,7 +53,7 @@ class trafficSignsRecognition:
 
         for pic, contour in enumerate(contours):
             area = cv2.contourArea(contour)
-            if area > 300:
+            if area > self.scale:
                 self.signs = 'turn_left'
 
         # No_straight
@@ -66,7 +67,7 @@ class trafficSignsRecognition:
 
         for pic, contour in enumerate(contours):
             area = cv2.contourArea(contour)
-            if area > 300:
+            if area > self.scale:
                 self.signs = 'no_straight'
 
         # no_right
@@ -80,7 +81,7 @@ class trafficSignsRecognition:
 
         for pic, contour in enumerate(contours):
             area = cv2.contourArea(contour)
-            if area > 300:
+            if area > self.scale:
                 self.signs = 'no_right'
 
         # no_left
@@ -94,7 +95,6 @@ class trafficSignsRecognition:
 
         for pic, contour in enumerate(contours):
             area = cv2.contourArea(contour)
-            if area > 300:
+            if area > self.scale:
                 self.signs = 'no_left'
-
         return self.signs

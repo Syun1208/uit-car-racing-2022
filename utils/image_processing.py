@@ -1,32 +1,69 @@
 import numpy as np
 import cv2
+import time
+import itertools
 
 list_area = list()
+trafficSignsRegister = list()
 
 
 class imageProcessing:
     def __init__(self, mask, trafficSigns):
         self.mask = mask
         self.trafficSigns = trafficSigns
+        self.height = self.mask.shape[0]
+        self.width = self.mask.shape[1]
 
     def __ROIStraight(self):
-        height = self.mask.shape[0]
-        width = self.mask.shape[1]
-        polygonRight = np.array([
-            [(450, 0), (0, 150), (0, 0)]
-        ])
         polygonLeft = np.array([
-            [(150, 0), (600, 150), (600, 0)]
+            [(500, 0), (0, 150), (0, 0)]
+        ])
+        polygonRight = np.array([
+            [(100, 0), (600, 150), (600, 0)]
         ])
         cv2.fillPoly(self.mask, polygonRight, 0)
         cv2.fillPoly(self.mask, polygonLeft, 0)
         return self.mask
 
+    def __ROITurnLeft(self):
+        polygonRight = np.array([
+            [(100, 0), (600, 150), (600, 0)]
+        ])
+        polygonUpper = np.array([
+            [(0, 0), (self.width, 0), (self.width, self.height * 2 // 3), (0, self.height * 2 // 3)]
+        ])
+        cv2.fillPoly(self.mask, polygonUpper, 0)
+        cv2.fillPoly(self.mask, polygonRight, 0)
+        return self.mask
+
+    def __ROITurnRight(self):
+        polygonLeft = np.array([
+            [(500, 0), (0, 150), (0, 0)]
+        ])
+        polygonUpper = np.array([
+            [(0, 0), (self.width, 0), (self.width, self.height * 2 // 3), (0, self.height * 2 // 3)]
+        ])
+        cv2.fillPoly(self.mask, polygonUpper, 0)
+        cv2.fillPoly(self.mask, polygonLeft, 0)
+        return self.mask
+
+    def __ROINoTurnRight(self):
+        polygonRight = np.array([
+            [(100, 0), (600, 150), (600, 0)]
+        ])
+        cv2.fillPoly(self.mask, polygonRight, 0)
+        return self.mask
+
+    def __ROINoTurnLeft(self):
+        polygonLeft = np.array([
+            [(500, 0), (0, 150), (0, 0)]
+        ])
+        cv2.fillPoly(self.mask, polygonLeft, 0)
+        return self.mask
+
     def __computeArea(self):
         gray = cv2.GaussianBlur(self.mask, (7, 7), 0)
-
         _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY_INV)
-
         cnts, hier = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         size_elements = 0
         for cnt in cnts:
@@ -51,11 +88,67 @@ class imageProcessing:
         self.mask = cv2.threshold(out_gray, 0, 255, cv2.THRESH_OTSU)[1]
         self.mask = self.__removeSmallContours()
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, minLane=0, maxLane=600, *args, **kwargs):
         self.__convertGreen2White()
         area = self.__computeArea()
-        if area >= 67000 and not self.trafficSigns:
-            self.mask = self.__ROIStraight()
+        trafficSignsRegister.insert(0, self.trafficSigns)
+        if area >= 67000:
+            # if self.trafficSigns == 'turn_right' or self.trafficSigns == 'no_left':
+            #     self.mask = self.__ROITurnRight()
+            #     delaySign = self.trafficSigns
+            #     delayTime = time.time()
+            # elif self.trafficSigns == 'turn_left' or self.trafficSigns == 'no_right':
+            #     self.mask = self.__ROITurnLeft()
+            #     delaySign = self.trafficSigns
+            #     delayTime = time.time()
+            # else:
+            #     self.mask = self.__ROIStraight()
+            #     if delaySign == 'turn_right' or self.trafficSigns == 'no_left':
+            #         self.mask = self.__ROITurnRight()
+            #     elif delaySign == 'turn_left' or self.trafficSigns == 'no_right':
+            #         self.mask = self.__ROITurnLeft()
+            #     if time.time() - delayTime > 10:
+            #         delaySign = None
+            # print('Delay sign: ', delaySign)
+            # if self.trafficSigns:
+            #     if self.trafficSigns == 'turn_right' or self.trafficSigns == 'no_left':
+            #         self.mask = self.__ROITurnRight()
+            #         trafficSignsRegister.insert(0, self.trafficSigns)
+            #     elif self.trafficSigns == 'turn_left' or self.trafficSigns == 'no_right':
+            #         self.mask = self.__ROITurnLeft()
+            #         trafficSignsRegister.insert(0, self.trafficSigns)
+            #     else:
+            #         self.mask = self.__ROIStraight()
+            #         trafficSignsRegister.insert(0, self.trafficSigns)
+            # else:
+            #     print(trafficSignsRegister)
+            #     print('turn right: ', bool('turn_right' or 'no_left' in trafficSignsRegister))
+            #     print('turn left: ', bool('turn_left' or 'no_right' in trafficSignsRegister))
+            #     if 'turn_right' or 'no_left' in trafficSignsRegister:
+            #         self.mask = self.__ROITurnRight()
+            #     elif 'turn_left' or 'no_right' in trafficSignsRegister:
+            #         self.mask = self.__ROITurnLeft()
+            #     else:
+            #         self.mask = self.__ROIStraight()
+            #     if len(trafficSignsRegister) > 100:
+            #         trafficSignsRegister.pop(-1)
+            if self.trafficSigns == 'turn_left' or 'turn_left' in trafficSignsRegister:
+                self.mask = self.__ROITurnLeft()
+            elif self.trafficSigns == 'turn_right' or 'turn_right' in trafficSignsRegister:
+                self.mask = self.__ROITurnRight()
+            elif self.trafficSigns == 'straight' or 'straight' in trafficSignsRegister:
+                self.mask = self.__ROIStraight()
+            elif self.trafficSigns == 'no_straight' or 'no_straight' in trafficSignsRegister:
+                if minLane <= 10 and maxLane <= 600:
+                    self.mask = self.__ROITurnLeft()
+                elif maxLane >= 600 and minLane >= 10:
+                    self.mask = self.__ROITurnRight()
+            elif self.trafficSigns == 'no_right' or 'no_right' in trafficSignsRegister:
+                self.mask = self.__ROINoTurnRight()
+            elif self.trafficSigns == 'no_left' or 'no_left' in trafficSignsRegister:
+                self.mask = self.__ROINoTurnLeft()
+        if len(trafficSignsRegister) > 90:
+            trafficSignsRegister.pop(-1)
         kernel = np.ones((15, 15), np.uint8)
         self.mask = cv2.dilate(self.mask, kernel, iterations=1)
         self.mask = self.__removeSmallContours()
