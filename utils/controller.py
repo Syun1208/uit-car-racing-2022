@@ -30,7 +30,7 @@ class Controller(imageProcessing, Fuzzy):
     def __init__(self, mask, trafficSigns):
         imageProcessing.__init__(self, mask, trafficSigns)
         Fuzzy.__init__(self)
-        self.mask = imageProcessing.__call__(self)
+        self.mask, self.scale = imageProcessing.__call__(self)
         self.trafficSigns = trafficSigns
 
     def findingLane(self, scale=45):
@@ -41,18 +41,18 @@ class Controller(imageProcessing, Fuzzy):
             if y == 255:
                 arr_normal.append(x)
         if not arr_normal:
-            arr_normal = [self.mask.shape[1] * 1 / 3, self.mask.shape[1] * 2 / 3]
+            arr_normal = [self.mask.shape[1] * 1 // 3, self.mask.shape[1] * 2 // 3]
         minLane = min(arr_normal)
         maxLane = max(arr_normal)
         center = int((minLane + maxLane) / 2)
         error = int(self.mask.shape[1] / 2) - center
-        return error, minLane, maxLane
+        return error
 
     def computeError(self, center):
         return int(self.mask.shape[1] / 2) - center
 
     @staticmethod
-    def PID(error, scale=26, p=0.2, i=0, d=0.01):
+    def __PID(error, scale=26, p=0.15, i=0, d=0.01):
         global t
         global error_arr
         error_arr[1:] = error_arr[0:-1]
@@ -101,166 +101,168 @@ class Controller(imageProcessing, Fuzzy):
 
     '''Angle and Speed Processing'''
 
-    @staticmethod
-    def __conditionalSpeed(angle, error):
+    def __conditionalSpeed(self, angle, error):
+        start = time.time()
         list_angle[1:] = list_angle[0:-1]
         list_angle[0] = abs(error)
         list_angle_train = np.array(list_angle).reshape((-1, 1))
-        predSpeed = np.dot(list_angle, - 0.1) + 30
+        predSpeed = np.dot(list_angle, - 0.1) + 40
         # reg = LinearRegression().fit(list_angle_train, speed)
-        reg = RandomForestRegressor(n_estimators=40, random_state=0).fit(list_angle_train, predSpeed)
+        reg = RandomForestRegressor(n_estimators=40, random_state=1).fit(list_angle_train, predSpeed)
         predSpeed = reg.predict(np.array(list_angle_train))
-
+        if self.trafficSigns != '' or angle < -4 or angle > 4:
+            predSpeed[0] = 2
+            if time.time() - start > 1:
+                predSpeed[0] = 10
+        elif self.trafficSigns == 'straight':
+            predSpeed[0] = 30
         return angle, predSpeed[0]
 
-    def __call__(self, scale=28, *args, **kwargs):
-        # cv2.imshow('Predicted Image', self.mask)
-        error, minLane, maxLane = self.findingLane()
-        if self.trafficSigns == '' or self.trafficSigns != 'straight':
-            print('Lmao')
-            angle = self.PID(error, scale=40)
-        else:
-            angle = self.PID(error, scale=scale)
+    def __call__(self, *args, **kwargs):
+        cv2.imshow('Predicted Image', self.mask)
+        error = self.findingLane()
+        angle = self.__PID(error, self.scale)
         angle, speed = self.__conditionalSpeed(angle, error)
+        if speed > 50:
+            speed = -1
         print("Speed RF: ", speed)
         return angle, speed
 
-
-class TrafficSignsController(Controller):
-    def __init__(self, mask, trafficSigns, speed):
-        super(TrafficSignsController, self).__init__(mask, trafficSigns)
-        self.trafficSigns = trafficSigns
-        self.speed = speed
-        self.angle = 0
-        self.corner = 0
-        self.UN_MIN_1 = 10
-        self.OV_MIN_1 = 30
-        self.UN_MAX_1 = 40
-        self.OV_MAX_1 = 50
-        self.check = 0
-        self.center = 0
-        self.MAX_SPEED = 30
-        self.width_road = 70
-        self.count = 0
-        self.centerLeft = 0
-        self.centerRight = 600
-        self.error = 25
-        self.errorLane, self.minLane, self.maxLane = self.findingLane()
-        self.errorHead, self.minHead, self.maxHead = self.findingLane(80)
-
-    def __straight(self, underSendBack, optionSpeed):
-        if 320 <= self.maxLane <= 500 and 2 <= self.minLane <= 290 and not self.error and not self.corner:
-            width[1:] = width[0:-1]
-            if self.maxLane - self.maxLane > 60:
-                width[0] = self.maxLane - self.minLane
-        self.width_road = np.average(width)
-        print('Width road: ', self.width_road)
-        self.center = int((self.minLane + self.maxLane) / 2)
-        if not self.minHead == self.maxHead == 91:
-            if self.maxLane >= self.OV_MAX_1 and self.UN_MIN_1 <= self.minLane <= self.OV_MIN_1:
-                self.center = self.minLane + int(self.width_road / 2)
-            elif self.minLane < self.UN_MIN_1 and self.UN_MAX_1 <= self.maxLane <= self.OV_MAX_1:
-                self.center = self.maxLane - int(self.width_road / 2)
-        self.speed = self.__PWM()
-        if float(self.speed) < 20.0:
-            self.speed = 30
-        elif float(self.speed) > optionSpeed:  # Adjust Speed
-            self.speed = underSendBack
-        if self.minLane == 450 and self.maxLane == 150 or self.maxLane == 550 or self.minLane == 0:
-            self.count += 1
-        return self.speed, self.center
-
-    def __turnRight(self):
-        if not self.corner and self.count:
-            self.corner = 1
-
-        if self.corner:
-            if time.time() - pre_time < 1.0:
-                self.center = self.centerRight
-            else:
-                self.trafficSigns = 'straight'
-                self.__reset()
-
-        return self.trafficSigns, self.center
-
-    def __turnLeft(self):
-        if not self.corner and self.count:
-            self.corner = 1
-
-        if self.corner:
-            if time.time() - pre_time < 1.0:
-                self.center = self.centerLeft
-            else:
-                self.trafficSigns = 'straight'
-                self.__reset()
-
-        return self.trafficSigns, self.center
-
-    def __PWM(self):
-        return -3 * abs(self.error) + 20
-
-    def __maxSpeedFunction(self):
-        return -0.125 * abs(self.error) + 20
-
-    def __controlTurning(self):
-        pass
-
-    def __reset(self):
-        self.corner = 0
-        self.check = 0
-        self.count = 0
-
-    def __call__(self, *args, **kwargs):
-        # self.MAX_SPEED = self.__maxSpeedFunction()
-        # if self.trafficSigns == 'decrease':
-        #     self.speed, self.center = self.__straight(-10, 20)
-        #     self.__reset()
-        # elif self.trafficSigns == 'straight':
-        #     self.speed, self.center = self.__straight(10, self.MAX_SPEED)
-        #     self.__reset()
-        # elif self.trafficSigns == 'no_straight':
-        #     self.speed, self.center = self.__straight(0, 10)
-        #     if not self.check:
-        #         if self.minLane <= 10:
-        #             self.check = 1
-        #         elif self.maxLane >= 600:
-        #             self.check = 2
-        #     elif self.check == 2:
-        #         self.trafficSigns, self.center = self.__turnRight()
-        #     else:
-        #         self.trafficSigns, self.center = self.__turnLeft()
-        # elif self.trafficSigns == 'turn_right' or self.trafficSigns == 'no_turn_left':
-        #     self.speed, self.center = self.__straight(0, 10)
-        #     if self.maxLane >= 134 and not self.check:
-        #         self.check = 1
-        #     elif self.check:
-        #         self.trafficSigns, self.center = self.__turnRight()
-        # elif self.trafficSigns == 'turn_left' or self.trafficSigns == 'no_turn_right':
-        #     self.trafficSigns, self.center = self.__straight(0, 10)
-        #     if self.minLane <= 25 and not self.check:
-        #         self.check = 1
-        #     elif self.check:
-        #         self.trafficSigns, self.center = self.__turnLeft()
-        # elif self.trafficSigns == 'car_right':
-        #     self.trafficSigns, self.center = self.__straight(10, self.MAX_SPEED)
-        #     self.center -= 5
-        # elif self.trafficSigns == 'car_left':
-        #     self.trafficSigns, self.center = self.__straight(10, self.MAX_SPEED)
-        #     self.center += 5
-        # if self.trafficSigns == 'straight':
-        #     print('True')
-        #     self.angle, self.speed = Controller.__call__(self)
-        # elif self.trafficSigns == 'turn_right':
-        #     print('Haha')
-        #     self.center = 600
-        #     self.error = self.computeError(self.center)
-        #     self.angle, self.speed = Controller.__call__(self)
-        # elif self.trafficSigns == 'turn_left':
-        #     print('Haha')
-        #     self.center = 0
-        #     self.error = self.computeError(self.center)
-        #     self.angle = self.PID(self.error, scale=40)
-        #     self.angle, self.speed = Controller.__call__(self)
-        # self.error = self.computeError(self.center)
-        # angle = self.PID(self.error)
-        return self.trafficSigns, self.speed, self.angle
+# class TrafficSignsController(Controller):
+#     def __init__(self, mask, trafficSigns, speed):
+#         super(TrafficSignsController, self).__init__(mask, trafficSigns)
+#         self.trafficSigns = trafficSigns
+#         self.speed = speed
+#         self.angle = 0
+#         self.corner = 0
+#         self.UN_MIN_1 = 10
+#         self.OV_MIN_1 = 30
+#         self.UN_MAX_1 = 40
+#         self.OV_MAX_1 = 50
+#         self.check = 0
+#         self.center = 0
+#         self.MAX_SPEED = 30
+#         self.width_road = 70
+#         self.count = 0
+#         self.centerLeft = 0
+#         self.centerRight = 600
+#         self.error = 25
+#         self.errorLane, self.minLane, self.maxLane = self.findingLane()
+#         self.errorHead, self.minHead, self.maxHead = self.findingLane(80)
+#
+#     def __straight(self, underSendBack, optionSpeed):
+#         if 320 <= self.maxLane <= 500 and 2 <= self.minLane <= 290 and not self.error and not self.corner:
+#             width[1:] = width[0:-1]
+#             if self.maxLane - self.maxLane > 60:
+#                 width[0] = self.maxLane - self.minLane
+#         self.width_road = np.average(width)
+#         print('Width road: ', self.width_road)
+#         self.center = int((self.minLane + self.maxLane) / 2)
+#         if not self.minHead == self.maxHead == 91:
+#             if self.maxLane >= self.OV_MAX_1 and self.UN_MIN_1 <= self.minLane <= self.OV_MIN_1:
+#                 self.center = self.minLane + int(self.width_road / 2)
+#             elif self.minLane < self.UN_MIN_1 and self.UN_MAX_1 <= self.maxLane <= self.OV_MAX_1:
+#                 self.center = self.maxLane - int(self.width_road / 2)
+#         self.speed = self.__PWM()
+#         if float(self.speed) < 20.0:
+#             self.speed = 30
+#         elif float(self.speed) > optionSpeed:  # Adjust Speed
+#             self.speed = underSendBack
+#         if self.minLane == 450 and self.maxLane == 150 or self.maxLane == 550 or self.minLane == 0:
+#             self.count += 1
+#         return self.speed, self.center
+#
+#     def __turnRight(self):
+#         if not self.corner and self.count:
+#             self.corner = 1
+#
+#         if self.corner:
+#             if time.time() - pre_time < 1.0:
+#                 self.center = self.centerRight
+#             else:
+#                 self.trafficSigns = 'straight'
+#                 self.__reset()
+#
+#         return self.trafficSigns, self.center
+#
+#     def __turnLeft(self):
+#         if not self.corner and self.count:
+#             self.corner = 1
+#
+#         if self.corner:
+#             if time.time() - pre_time < 1.0:
+#                 self.center = self.centerLeft
+#             else:
+#                 self.trafficSigns = 'straight'
+#                 self.__reset()
+#
+#         return self.trafficSigns, self.center
+#
+#     def __PWM(self):
+#         return -3 * abs(self.error) + 20
+#
+#     def __maxSpeedFunction(self):
+#         return -0.125 * abs(self.error) + 20
+#
+#     def __controlTurning(self):
+#         pass
+#
+#     def __reset(self):
+#         self.corner = 0
+#         self.check = 0
+#         self.count = 0
+#
+#     def __call__(self, *args, **kwargs):
+#         # self.MAX_SPEED = self.__maxSpeedFunction()
+#         # if self.trafficSigns == 'decrease':
+#         #     self.speed, self.center = self.__straight(-10, 20)
+#         #     self.__reset()
+#         # elif self.trafficSigns == 'straight':
+#         #     self.speed, self.center = self.__straight(10, self.MAX_SPEED)
+#         #     self.__reset()
+#         # elif self.trafficSigns == 'no_straight':
+#         #     self.speed, self.center = self.__straight(0, 10)
+#         #     if not self.check:
+#         #         if self.minLane <= 10:
+#         #             self.check = 1
+#         #         elif self.maxLane >= 600:
+#         #             self.check = 2
+#         #     elif self.check == 2:
+#         #         self.trafficSigns, self.center = self.__turnRight()
+#         #     else:
+#         #         self.trafficSigns, self.center = self.__turnLeft()
+#         # elif self.trafficSigns == 'turn_right' or self.trafficSigns == 'no_turn_left':
+#         #     self.speed, self.center = self.__straight(0, 10)
+#         #     if self.maxLane >= 134 and not self.check:
+#         #         self.check = 1
+#         #     elif self.check:
+#         #         self.trafficSigns, self.center = self.__turnRight()
+#         # elif self.trafficSigns == 'turn_left' or self.trafficSigns == 'no_turn_right':
+#         #     self.trafficSigns, self.center = self.__straight(0, 10)
+#         #     if self.minLane <= 25 and not self.check:
+#         #         self.check = 1
+#         #     elif self.check:
+#         #         self.trafficSigns, self.center = self.__turnLeft()
+#         # elif self.trafficSigns == 'car_right':
+#         #     self.trafficSigns, self.center = self.__straight(10, self.MAX_SPEED)
+#         #     self.center -= 5
+#         # elif self.trafficSigns == 'car_left':
+#         #     self.trafficSigns, self.center = self.__straight(10, self.MAX_SPEED)
+#         #     self.center += 5
+#         # if self.trafficSigns == 'straight':
+#         #     print('True')
+#         #     self.angle, self.speed = Controller.__call__(self)
+#         # elif self.trafficSigns == 'turn_right':
+#         #     print('Haha')
+#         #     self.center = 600
+#         #     self.error = self.computeError(self.center)
+#         #     self.angle, self.speed = Controller.__call__(self)
+#         # elif self.trafficSigns == 'turn_left':
+#         #     print('Haha')
+#         #     self.center = 0
+#         #     self.error = self.computeError(self.center)
+#         #     self.angle = self.PID(self.error, scale=40)
+#         #     self.angle, self.speed = Controller.__call__(self)
+#         # self.error = self.computeError(self.center)
+#         # angle = self.PID(self.error)
+#         return self.trafficSigns, self.speed, self.angle

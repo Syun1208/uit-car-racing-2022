@@ -1,7 +1,18 @@
 import numpy as np
 import cv2
+from pathlib import Path
+import os
+import sys
 import time
 import itertools
+
+FILE = Path(__file__).resolve()
+ROOT = FILE.parents[0]
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))  # add ROOT to PATH
+ROOT = Path(os.path.abspath(ROOT))  # relative
+ROOT = os.path.dirname(ROOT)
+sys.path.insert(0, ROOT)
 
 list_area = list()
 trafficSignsRegister = list()
@@ -11,6 +22,7 @@ class imageProcessing:
     def __init__(self, mask, trafficSigns):
         self.mask = mask
         self.trafficSigns = trafficSigns
+        self.scale = 0
         self.height = self.mask.shape[0]
         self.width = self.mask.shape[1]
 
@@ -27,7 +39,7 @@ class imageProcessing:
 
     def __ROITurnLeft(self):
         polygonRight = np.array([
-            [(100, 0), (600, 150), (600, 0)]
+            [(50, 0), (600, 150), (600, 0)]
         ])
         polygonUpper = np.array([
             [(0, 0), (self.width, 0), (self.width, self.height * 2 // 3), (0, self.height * 2 // 3)]
@@ -38,7 +50,7 @@ class imageProcessing:
 
     def __ROITurnRight(self):
         polygonLeft = np.array([
-            [(500, 0), (0, 150), (0, 0)]
+            [(550, 0), (0, 150), (0, 0)]
         ])
         polygonUpper = np.array([
             [(0, 0), (self.width, 0), (self.width, self.height * 2 // 3), (0, self.height * 2 // 3)]
@@ -87,9 +99,26 @@ class imageProcessing:
         out_gray = cv2.divide(self.mask, bg, scale=255)
         self.mask = cv2.threshold(out_gray, 0, 255, cv2.THRESH_OTSU)[1]
         self.mask = self.__removeSmallContours()
+        return self.mask
 
-    def __call__(self, minLane=0, maxLane=600, *args, **kwargs):
-        self.__convertGreen2White()
+    @staticmethod
+    def __checkMinMax(mask, scale=45):
+        arr_normal = []
+        height = mask.shape[0] - scale
+        lineRow = mask[height, :]
+        for x, y in enumerate(lineRow):
+            if y == 255:
+                arr_normal.append(x)
+        if not arr_normal:
+            arr_normal = [mask.shape[1] * 1 // 3, mask.shape[1] * 2 // 3]
+        minLane = min(arr_normal)
+        maxLane = max(arr_normal)
+        return minLane, maxLane
+
+    def __call__(self, *args, **kwargs):
+        self.mask = self.__convertGreen2White()
+        minLane, maxLane = self.__checkMinMax(self.mask)
+        print(minLane, maxLane)
         area = self.__computeArea()
         trafficSignsRegister.insert(0, self.trafficSigns)
         if area >= 67000:
@@ -133,23 +162,50 @@ class imageProcessing:
             #     if len(trafficSignsRegister) > 100:
             #         trafficSignsRegister.pop(-1)
             if self.trafficSigns == 'turn_left' or 'turn_left' in trafficSignsRegister:
+                print('Turn left')
                 self.mask = self.__ROITurnLeft()
+                self.scale = 35
             elif self.trafficSigns == 'turn_right' or 'turn_right' in trafficSignsRegister:
+                print('Turn right')
                 self.mask = self.__ROITurnRight()
-            elif self.trafficSigns == 'straight' or 'straight' in trafficSignsRegister:
-                self.mask = self.__ROIStraight()
-            elif self.trafficSigns == 'no_straight' or 'no_straight' in trafficSignsRegister:
-                if minLane <= 10 and maxLane <= 600:
+                self.scale = 35
+            # elif self.trafficSigns == 'straight' or 'straight' in trafficSignsRegister:
+            #     self.mask = self.__ROIStraight()
+            #     self.scale = 21
+            elif self.trafficSigns == 'no_straight':
+                if minLane < 20 and maxLane <= 422:
                     self.mask = self.__ROITurnLeft()
-                elif maxLane >= 600 and minLane >= 10:
+                    trafficSignsRegister.insert(1, 'turn_left')
+                    self.scale = 35
+                elif maxLane > 420 and minLane >= 20:
                     self.mask = self.__ROITurnRight()
+                    trafficSignsRegister.insert(1, 'turn_right')
+                    self.scale = 35
             elif self.trafficSigns == 'no_right' or 'no_right' in trafficSignsRegister:
                 self.mask = self.__ROINoTurnRight()
+                self.scale = 35
             elif self.trafficSigns == 'no_left' or 'no_left' in trafficSignsRegister:
                 self.mask = self.__ROINoTurnLeft()
-        if len(trafficSignsRegister) > 90:
+                self.scale = 35
+            else:
+                self.mask = self.__ROIStraight()
+                self.scale = 5
+        if len(trafficSignsRegister) > 70:
             trafficSignsRegister.pop(-1)
         kernel = np.ones((15, 15), np.uint8)
         self.mask = cv2.dilate(self.mask, kernel, iterations=1)
-        self.mask = self.__removeSmallContours()
-        return self.mask
+        # self.mask = self.__removeSmallContours()
+        return self.mask, self.scale
+
+
+if __name__ == "__main__":
+    ls = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'no_straight',
+          'no_straight', 'no_straight', 'no_straight', 'no_straight', 'no_straight', 'no_straight', 'no_straight',
+          'no_straight', 'no_straight', 'no_straight', 'no_straight', 'no_straight', 'no_straight', 'no_straight',
+          'no_straight', 'no_straight', 'no_straight', 'no_straight', 'no_straight', 'no_straight', 'no_straight',
+          'no_straight', 'no_straight', 'no_straight', 'no_straight', 'no_straight', 'no_straight', 'no_straight',
+          'no_straight', 'no_straight', 'no_straight', 'no_straight', 'no_straight', 'no_straight', 'no_straight',
+          'no_straight', 'no_straight', 'no_straight', 'no_straight', 'no_straight', 'no_straight', 'no_straight',
+          'no_straight', 'no_straight', 'no_straight', 'no_straight']
+    ls.insert(0, 'turn_left')
+    print(ls)

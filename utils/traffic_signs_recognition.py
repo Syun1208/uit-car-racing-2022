@@ -8,7 +8,7 @@ from utils.image_processing import imageProcessing
 class trafficSignsRecognition:
     def __init__(self, mask):
         self.signs = ''
-        self.scale = 320
+        self.scale = 400
         self.mask_signs = mask
         self.colourCode = {'straight': [[0, 0, 254], [0, 0, 255]], 'no_straight': [[254, 0, 175], [255, 0, 180]],
                            'turn_left': [[0, 254, 0], [0, 254, 0]], 'no_left': [[0, 254, 254], [0, 255, 255]],
