@@ -4,6 +4,7 @@ from unity_utils.unity_utils import Unity
 import time
 import logging
 import signal
+import cv2
 import requests
 import playsound
 import eyed3
@@ -92,6 +93,7 @@ def main():
     args = parser_args()
     unity_api = Unity(args.port)
     unity_api.connect()
+    print('BẤM ĐI BTC !')
     # frame = 0
     # out_sign = "straight"
     # flag_timer = 0
@@ -109,6 +111,7 @@ def main():
         start_time = time.time()
         left_image, right_image = unity_api.get_images()
         image = np.concatenate((left_image, right_image), axis=1)
+
         '''--------------------------Controller--------------------------------'''
         # if not flag_timer:
         #     frame += 1
@@ -149,9 +152,9 @@ def main():
         #             carFlag = 0
         #         trafficSigns = out_sign
         # if trafficSigns != 'none' or trafficSigns != 'unknown' or trafficSigns is not None:
-        recognizeTrafficSigns = trafficSignsRecognition(image)
-        trafficSigns = recognizeTrafficSigns()
-        controller = Controller(image, left_image, right_image, trafficSigns)
+        # recognizeTrafficSigns = trafficSignsRecognition(image)
+        # trafficSigns = recognizeTrafficSigns()
+        controller = Controller(image)
         angle, speed = controller()
         # else:
         #     trafficSignsController = TrafficSignsController(image, trafficSigns, speed)
@@ -159,9 +162,8 @@ def main():
         # print("time: ", 1 / (time.time() - start_time))
         # unity_api.show_images(left_image, right_image)
         data = unity_api.set_speed_angle(speed, angle)  # speed: [0:100], angle: [-25:25]
-        # print('Speed: ', data['Speed'])
         # print('Angle: ', data['Angle'])
-        print('Traffic Signs: ', trafficSigns)
+        # print('Traffic Signs: ', trafficSigns)
         # text1 = ["SPEED", "ANGLE", 'TRAFFIC SIGNS']
         # text2 = [["{:.2f}".format(data['Speed']), '{:.2f}'.format(data['Angle']), trafficSigns]]
         # print(tabulate(text2, text1, tablefmt="pretty"))

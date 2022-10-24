@@ -26,14 +26,16 @@ list_angle = np.zeros(5)
 width = np.zeros(10)
 
 
-class Controller(imageProcessing, Fuzzy):
-    def __init__(self, mask, left_mask, right_mask, trafficSigns):
-        imageProcessing.__init__(self, mask, left_mask, right_mask, trafficSigns)
+class Controller(imageProcessing, trafficSignsRecognition, Fuzzy):
+    def __init__(self, mask):
+        trafficSignsRecognition.__init__(self, mask)
+        self.trafficSigns = trafficSignsRecognition.__call__(self)
+        imageProcessing.__init__(self, mask, mask[:, :mask.shape[1] // 2], mask[:, mask.shape[1] // 2:],
+                                 self.trafficSigns)
         Fuzzy.__init__(self)
         self.mask, self.scale = imageProcessing.__call__(self)
-        self.trafficSigns = trafficSigns
 
-    def findingLane(self, scale=55):
+    def findingLane(self, scale=50):
         arr_normal = []
         height = self.mask.shape[0] - scale
         lineRow = self.mask[height, :]
@@ -52,7 +54,7 @@ class Controller(imageProcessing, Fuzzy):
         return int(self.mask.shape[1] / 2) - center
 
     @staticmethod
-    def __PID(error, scale=26, p=0.2, i=0, d=0.01):
+    def __PID(error, scale=28, p=0.16, i=0, d=0.01):
         global t
         global error_arr
         error_arr[1:] = error_arr[0:-1]
@@ -102,22 +104,22 @@ class Controller(imageProcessing, Fuzzy):
     '''Angle and Speed Processing'''
 
     def __conditionalSpeed(self, angle, error):
-        start = time.time()
         list_angle[1:] = list_angle[0:-1]
         list_angle[0] = abs(error)
         list_angle_train = np.array(list_angle).reshape((-1, 1))
-        predSpeed = np.dot(list_angle, - 0.1) + 35
+        predSpeed = np.dot(list_angle, - 0.1) + 32
         # reg = LinearRegression().fit(list_angle_train, speed)
         reg = RandomForestRegressor(n_estimators=40, random_state=1).fit(list_angle_train, predSpeed)
         predSpeed = reg.predict(np.array(list_angle_train))
         if self.trafficSigns != '':
-            print('QÚA GHÊ GỚM !')
-            if self.trafficSigns == 'no_straight' or angle < -4 or angle > 4:
-                predSpeed[0] = 1
-                if time.time() - start > 1:
+            print('QÚA GHÊ GỚM ! DẬY MÚA ĐI !')
+            if self.trafficSigns != 'straight' or angle < -4 or angle > 4:
+                start = time.time()
+                predSpeed[0] = 2
+                if time.time() - start > 2:
                     predSpeed[0] = 10
-        elif self.trafficSigns == 'straight':
-            predSpeed[0] = 30
+            elif self.trafficSigns == 'straight':
+                predSpeed[0] = 38
         return angle, predSpeed[0]
 
     def __call__(self, *args, **kwargs):
@@ -143,7 +145,8 @@ class ModelPredictiveControl:
         # Reference or set point the controller will achieve.
         self.reference = [50, 0, 0]
 
-    def plant_model(self, prev_state, dt, pedal, steering):
+    @staticmethod
+    def plant_model(prev_state, dt, pedal, steering):
         x_t = prev_state[0]
         v_t = prev_state[3]  # m/s
         a_t = pedal

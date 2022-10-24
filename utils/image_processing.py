@@ -43,7 +43,7 @@ class imageProcessing:
 
     def __ROITurnLeft(self):
         polygonRight = np.array([
-            [(0, 0), (600, 150), (600, 0)]
+            [(0, 0), (0, 10), (600, 150), (600, 0)]
         ])
         polygonUpper = np.array([
             [(0, 0), (self.width, 0), (self.width, self.height * 1 // 3), (0, self.height * 1 // 3)]
@@ -54,7 +54,7 @@ class imageProcessing:
 
     def __ROITurnRight(self):
         polygonLeft = np.array([
-            [(600, 0), (0, 150), (0, 0)]
+            [(600, 0), (600, 10), (0, 150), (0, 0)]
         ])
         polygonUpper = np.array([
             [(0, 0), (self.width, 0), (self.width, self.height * 1 // 3), (0, self.height * 1 // 3)]
@@ -303,11 +303,11 @@ class imageProcessing:
             if self.trafficSigns == 'turn_left' or 'turn_left' in trafficSignsRegister:
                 # print('Turn left')
                 self.mask = self.__ROITurnLeft()
-                self.scale = 60
+                self.scale = 37
             elif self.trafficSigns == 'turn_right' or 'turn_right' in trafficSignsRegister:
                 # print('Turn right')
                 self.mask = self.__ROITurnRight()
-                self.scale = 60
+                self.scale = 37
             # elif self.trafficSigns == 'straight' or 'straight' in trafficSignsRegister:
             #     self.mask = self.__ROIStraight()
             #     self.scale = 21
@@ -323,17 +323,17 @@ class imageProcessing:
                 elif horizontal_check_left:
                     self.mask = self.__ROITurnLeft()
                     trafficSignsRegister.insert(0, 'turn_left')
-                self.scale = 60
+                self.scale = 37
             elif self.trafficSigns == 'no_right' or 'no_right' in trafficSignsRegister:
                 self.mask = self.__ROINoTurnRight()
-                self.scale = 60
+                self.scale = 37
             elif self.trafficSigns == 'no_left' or 'no_left' in trafficSignsRegister:
                 self.mask = self.__ROINoTurnLeft()
-                self.scale = 60
+                self.scale = 37
             else:
                 self.mask = self.__ROIStraight()
-                self.scale = 27
-        if len(trafficSignsRegister) > 40:
+                self.scale = 27.6
+        if len(trafficSignsRegister) > 25:
             trafficSignsRegister.pop(-1)
         kernel = np.ones((15, 15), np.uint8)
         self.mask = cv2.dilate(self.mask, kernel, iterations=1)
