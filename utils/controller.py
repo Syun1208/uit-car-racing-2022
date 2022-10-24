@@ -16,8 +16,8 @@ ROOT = FILE.parents[0]
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.abspath(ROOT))  # relative
-ROOT = os.path.dirname(ROOT)
-sys.path.insert(0, ROOT)
+WORK_DIR = os.path.dirname(ROOT)
+sys.path.insert(0, WORK_DIR)
 
 t = time.time()
 pre_time = time.time()
@@ -27,13 +27,13 @@ width = np.zeros(10)
 
 
 class Controller(imageProcessing, Fuzzy):
-    def __init__(self, mask, trafficSigns):
-        imageProcessing.__init__(self, mask, trafficSigns)
+    def __init__(self, mask, left_mask, right_mask, trafficSigns):
+        imageProcessing.__init__(self, mask, left_mask, right_mask, trafficSigns)
         Fuzzy.__init__(self)
         self.mask, self.scale = imageProcessing.__call__(self)
         self.trafficSigns = trafficSigns
 
-    def findingLane(self, scale=45):
+    def findingLane(self, scale=55):
         arr_normal = []
         height = self.mask.shape[0] - scale
         lineRow = self.mask[height, :]
@@ -52,7 +52,7 @@ class Controller(imageProcessing, Fuzzy):
         return int(self.mask.shape[1] / 2) - center
 
     @staticmethod
-    def __PID(error, scale=26, p=0.15, i=0, d=0.01):
+    def __PID(error, scale=26, p=0.2, i=0, d=0.01):
         global t
         global error_arr
         error_arr[1:] = error_arr[0:-1]
@@ -106,27 +106,74 @@ class Controller(imageProcessing, Fuzzy):
         list_angle[1:] = list_angle[0:-1]
         list_angle[0] = abs(error)
         list_angle_train = np.array(list_angle).reshape((-1, 1))
-        predSpeed = np.dot(list_angle, - 0.1) + 40
+        predSpeed = np.dot(list_angle, - 0.1) + 35
         # reg = LinearRegression().fit(list_angle_train, speed)
         reg = RandomForestRegressor(n_estimators=40, random_state=1).fit(list_angle_train, predSpeed)
         predSpeed = reg.predict(np.array(list_angle_train))
-        if self.trafficSigns != '' or angle < -4 or angle > 4:
-            predSpeed[0] = 2
-            if time.time() - start > 1:
-                predSpeed[0] = 10
+        if self.trafficSigns != '':
+            print('QÚA GHÊ GỚM !')
+            if self.trafficSigns == 'no_straight' or angle < -4 or angle > 4:
+                predSpeed[0] = 1
+                if time.time() - start > 1:
+                    predSpeed[0] = 10
         elif self.trafficSigns == 'straight':
             predSpeed[0] = 30
         return angle, predSpeed[0]
 
     def __call__(self, *args, **kwargs):
-        cv2.imshow('Predicted Image', self.mask)
+        # cv2.imshow('Predicted Image', self.mask)
         error = self.findingLane()
         angle = self.__PID(error, self.scale)
         angle, speed = self.__conditionalSpeed(angle, error)
-        if speed > 50:
+        if speed > 40:
             speed = -1
-        print("Speed RF: ", speed)
+        # print("Speed RF: ", speed)
         return angle, speed
+
+
+class ModelPredictiveControl:
+    def __init__(self):
+        self.horizon = 20
+        self.dt = 0.2
+        # every element in input array u will be remain for dt seconds
+        # here with horizon 20 and dt 0.2 we will predict 4 seconds ahead(20*0.2)
+        # we can't predict too much ahead in time because that might be pointless and take too much computational time
+        # we can't predict too less ahead in time because that might end up overshooting from end point as it won't be able to see the end goal in time
+
+        # Reference or set point the controller will achieve.
+        self.reference = [50, 0, 0]
+
+    def plant_model(self, prev_state, dt, pedal, steering):
+        x_t = prev_state[0]
+        v_t = prev_state[3]  # m/s
+        a_t = pedal
+
+        x_t_1 = x_t + v_t * dt  # distance = speed*time
+        v_t_1 = v_t + a_t * dt - v_t / 25.0  # v = u + at (-v_t/25 is a rough estimate for friction)
+
+        return [x_t_1, 0, 0, v_t_1]
+
+    def cost_function(self, u, *args):
+        state = args[0]
+        ref = args[1]
+        x_end = ref[0]
+        cost = 0.0
+
+        for i in range(self.horizon):
+            state = self.plant_model(state, self.dt, u[i * 2], u[i * 2 + 1])
+            # u input vector is designed like = [(pedal for t1), (steering for t1), (pedal for t2), (steering for t2)...... (pedal for t(horizon)), (steering for t(horizon))]
+            x_current = state[0]
+            v_current = state[3]
+
+            cost += (x_end - x_current) ** 2  # so we keep getting closer to end point
+
+            if v_current * 3.6 > 10:  # speed limit is 10km/h, 3.6 is multiplied to convert m/s to km/h
+                cost += 100 * v_current
+
+            if x_current > x_end:  # so we don't overshoot further than end point
+                cost += 10000
+
+        return cost
 
 # class TrafficSignsController(Controller):
 #     def __init__(self, mask, trafficSigns, speed):
