@@ -37,7 +37,7 @@ def parser_args():
     return parser.parse_args()
 
 
-def playMusicPHOLOTINO():
+def playMusicPHOLOTINO(url, name_music):
     # args = parser_args()
     # url = args.url
     # video = pafy.new(url)
@@ -54,22 +54,21 @@ def playMusicPHOLOTINO():
     # except Exception as bug:
     #     logging.error(bug)
     #     player.stop()
-    args = parser_args()
     try:
-        url = args.url
-        downloaded_file_location = ROOT / 'pholotino.mp3'
+        # url = args.url
+        downloaded_file_location = ROOT / name_music
         r = requests.get(url)
         with open(downloaded_file_location, 'wb') as f:
             f.write(r.content)
         mixer.init()
-        mixer.music.load('pholotino.mp3')
+        mixer.music.load(ROOT / name_music)
         mixer.music.set_volume(1)
         mixer.music.play()
     except Exception as bug:
         logging.error(bug)
-        playsound.playsound('pholotino.mp3', True)
+        # playsound.playsound(name_music, True)
         mixer.init()
-        mixer.music.load('pholotino.mp3')
+        mixer.music.load(ROOT / name_music)
         mixer.music.set_volume(1)
         mixer.music.play()
 
@@ -156,7 +155,8 @@ def main():
 
 if __name__ == "__main__":
     try:
-        p1 = Process(target=playMusicPHOLOTINO())
+        args = parser_args()
+        p1 = Process(target=playMusicPHOLOTINO(args.url, 'pholotino.mp3'))
         p1.start()
         # p2 = Process(target=getLyricsMusic())
         # p2.start()

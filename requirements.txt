@@ -40,7 +40,7 @@ zipp~=3.8.1
 requests~=2.26.0
 playsound==1.2.2
 pygame~=2.1.2
-PyGObject~=3.36.0
+# PyGObject~=3.36.0
 eyed3~=0.9.7
 toml~=0.10.2
 deprecation~=2.1.0
