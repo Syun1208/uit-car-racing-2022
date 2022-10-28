@@ -32,10 +32,10 @@ class imageProcessing:
 
     def __ROIStraight(self):
         polygonLeft = np.array([
-            [(600, 0), (0, 150), (0, 0)]
+            [(600, 0), (600, 10), (0, 150), (0, 0)]
         ])
         polygonRight = np.array([
-            [(0, 0), (600, 150), (600, 0)]
+            [(0, 0), (0, 10), (600, 150), (600, 0)]
         ])
         cv2.fillPoly(self.mask, polygonRight, 0)
         cv2.fillPoly(self.mask, polygonLeft, 0)
@@ -43,7 +43,7 @@ class imageProcessing:
 
     def __ROITurnLeft(self):
         polygonRight = np.array([
-            [(0, 0), (0, 10), (600, 150), (600, 0)]
+            [(0, 0), (0, 15), (600, 150), (600, 0)]
         ])
         polygonUpper = np.array([
             [(0, 0), (self.width, 0), (self.width, self.height * 1 // 3), (0, self.height * 1 // 3)]
@@ -54,7 +54,7 @@ class imageProcessing:
 
     def __ROITurnRight(self):
         polygonLeft = np.array([
-            [(600, 0), (600, 10), (0, 150), (0, 0)]
+            [(600, 0), (600, 15), (0, 150), (0, 0)]
         ])
         polygonUpper = np.array([
             [(0, 0), (self.width, 0), (self.width, self.height * 1 // 3), (0, self.height * 1 // 3)]
@@ -65,14 +65,14 @@ class imageProcessing:
 
     def __ROINoTurnRight(self):
         polygonRight = np.array([
-            [(0, 0), (600, 150), (600, 0)]
+            [(0, 0), (0, 15), (600, 150), (600, 0)]
         ])
         cv2.fillPoly(self.mask, polygonRight, 0)
         return self.mask
 
     def __ROINoTurnLeft(self):
         polygonLeft = np.array([
-            [(600, 0), (0, 150), (0, 0)]
+            [(600, 0), (600, 15), (0, 150), (0, 0)]
         ])
         cv2.fillPoly(self.mask, polygonLeft, 0)
         return self.mask

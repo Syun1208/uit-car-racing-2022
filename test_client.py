@@ -1,9 +1,10 @@
 import socket
-
 from unity_utils.unity_utils import Unity
 import time
 import logging
+import matplotlib.pyplot as plt
 import signal
+import pandas as pd
 import cv2
 import requests
 import playsound
@@ -18,7 +19,6 @@ from tabulate import tabulate
 from multiprocessing import Process
 from IPython.display import clear_output
 from utils.controller import Controller
-from utils.traffic_signs_recognition import trafficSignsRecognition
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]
@@ -32,8 +32,8 @@ sys.path.insert(0, WORK_DIR)
 def parser_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, help='Input your port connection', default=11000)
-    parser.add_argument('--url', type=str, help='url youtube',
-                        default='https://play.imusicvn.com/stream/Wh06z7CB2OLn')
+    parser.add_argument('--url', type=str, help='url downloading music',
+                        default='https://stream.nixcdn.com/NhacCuaTui2029/DoanTuyetNangDiFrexsRemix-PhatHuyT4-7022889.mp3?st=SQkSrqlEECJcdathICmHdg&e=1666795517')
     return parser.parse_args()
 
 
@@ -55,38 +55,23 @@ def playMusicPHOLOTINO():
     #     logging.error(bug)
     #     player.stop()
     args = parser_args()
-    url = args.url
-    downloaded_file_location = ROOT / 'pholotino.mp3'
-    r = requests.get(url)
-    with open(downloaded_file_location, 'wb') as f:
-        f.write(r.content)
-    # playsound.playsound('pholotino.wav', True)
-    mixer.init()
-    mixer.music.load('pholotino.mp3')
-    mixer.music.set_volume(1)
-    mixer.music.play()
-
-
-# def getLyricsMusic():
-#     time_delays = [0.1, 0.1, 0.1, 0.5, 0.2, 0.1, 0.1]
-#     song_lyrics = ROOT / 'pholotino.mp3'
-#     print("QUÁ GHÊ GỚM !")
-#     # for song_char, char_delay in zip(song_lyrics, time_delays):
-#     #     time.sleep(char_delay)
-#     #     sys.stdout.write(song_char)
-#     #     sys.stdout.flush()
-#     track = eyed3.load(song_lyrics)
-#     tag = track.tag
-#     artist = tag.artist
-#     lyrics = tag.lyrics
-#     print(tag.lyrics)
-#     for lyric in tag.lyrics:
-#         print(lyric)
-
-
-def signal_handler(sig, frame):
-    print('You pressed Ctrl+C!')
-    sys.exit(0)
+    try:
+        url = args.url
+        downloaded_file_location = ROOT / 'pholotino.mp3'
+        r = requests.get(url)
+        with open(downloaded_file_location, 'wb') as f:
+            f.write(r.content)
+        mixer.init()
+        mixer.music.load('pholotino.mp3')
+        mixer.music.set_volume(1)
+        mixer.music.play()
+    except Exception as bug:
+        logging.error(bug)
+        playsound.playsound('pholotino.mp3', True)
+        mixer.init()
+        mixer.music.load('pholotino.mp3')
+        mixer.music.set_volume(1)
+        mixer.music.play()
 
 
 def main():
@@ -183,10 +168,17 @@ if __name__ == "__main__":
         p1.terminate()
         # p2.terminate()
         p3.terminate()
-        signal.signal(signal.SIGINT, signal_handler)
-        signal.pause()
     except Exception as e:
         logging.error(e)
         text1 = ["NOTICE"]
         text2 = [["QUÁ GHÊ GỚM !"], ["VÀ ĐÂY LÀ PHOLOTINO !"]]
         print(tabulate(text2, text1, tablefmt="pretty"))
+    # df = pd.read_csv('data/data_linux2.csv')
+    # df = df.to_dict('list')
+    # plt.scatter(df['error'], df['expected_speed'], label='Expected Speed', color='red')
+    # plt.plot(df['error'], df['predicted_speed'], label='Predicted Speed', color='blue')
+    # plt.title('Random Forest Regression Model Map Linux 2')
+    # plt.xlabel('Error')
+    # plt.ylabel('Speed')
+    # plt.legend(loc='best')
+    # plt.savefig('map_linux2.png')

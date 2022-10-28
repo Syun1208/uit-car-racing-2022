@@ -1,10 +1,16 @@
 import sys
 import time
 import numpy as np
+import torch
 import cv2
+import matplotlib.pyplot as plt
+import os
+import pandas as pd
+from scipy.optimize import minimize
 from sklearn.ensemble import RandomForestRegressor
 from utils.image_processing import imageProcessing
 from skfuzzy import control
+from IPython.display import clear_output
 from fuzzy_control.fuzzy import Fuzzy
 import skfuzzy as fuzzy
 import os
@@ -21,6 +27,11 @@ sys.path.insert(0, WORK_DIR)
 
 t = time.time()
 pre_time = time.time()
+data = dict()
+list_data_angle = list()
+list_data_predicted_speed = list()
+list_data_expected_speed = list()
+list_data_error = list()
 error_arr = np.zeros(5)
 list_angle = np.zeros(5)
 width = np.zeros(10)
@@ -35,7 +46,7 @@ class Controller(imageProcessing, trafficSignsRecognition, Fuzzy):
         Fuzzy.__init__(self)
         self.mask, self.scale = imageProcessing.__call__(self)
 
-    def findingLane(self, scale=50):
+    def findingLane(self, scale=60):
         arr_normal = []
         height = self.mask.shape[0] - scale
         lineRow = self.mask[height, :]
@@ -108,25 +119,47 @@ class Controller(imageProcessing, trafficSignsRecognition, Fuzzy):
         list_angle[0] = abs(error)
         list_angle_train = np.array(list_angle).reshape((-1, 1))
         predSpeed = np.dot(list_angle, - 0.1) + 32
+        # predSpeed = np.add(np.dot(np.power(list_angle, 2), -0.1), np.dot(list_angle, 20)) + 50
+        list_data_expected_speed.append(np.average(predSpeed, axis=0))
+        # data['expected_speed'] = list_data_expected_speed
         # reg = LinearRegression().fit(list_angle_train, speed)
         reg = RandomForestRegressor(n_estimators=40, random_state=1).fit(list_angle_train, predSpeed)
         predSpeed = reg.predict(np.array(list_angle_train))
+        # list_data_predicted_speed.append(predSpeed[0])
+        # list_data_angle.append(angle)
+        # list_data_error.append(error)
+        # data['predicted_speed'] = list_data_predicted_speed
+        # data['angle'] = list_data_angle
+        # data['error'] = list_data_error
+        # df = pd.DataFrame(data)
+        # df.to_csv(os.path.join(str(WORK_DIR), 'data/data_linux.csv'), index=False)
+        # clear_output(wait=True)
+        # X_grid = np.arange(min(list_angle_train), max(list_angle_train), 0.01)
+        # X_grid = X_grid.reshape((len(X_grid), 1))
+        # plt.scatter(list_angle_train, predSpeed, color='red')
+        # plt.plot(X_grid, reg.predict(X_grid), color='blue')
+        # plt.title('Random Forest Regression Model')
+        # plt.xlabel('Error')
+        # plt.ylabel('Speed')
+        # plt.savefig(ROOT / 'random_forest.png')
         if self.trafficSigns != '':
-            print('QÚA GHÊ GỚM ! DẬY MÚA ĐI !')
+            print('QÚA GHÊ GỚM ! VÀ ĐÂY LÀ PHOLOTINO !')
             if self.trafficSigns != 'straight' or angle < -4 or angle > 4:
                 start = time.time()
-                predSpeed[0] = 2
-                if time.time() - start > 2:
-                    predSpeed[0] = 10
+                predSpeed[0] = 1
+                if time.time() - start > 5:
+                    predSpeed[0] = 5
             elif self.trafficSigns == 'straight':
                 predSpeed[0] = 38
-        return angle, predSpeed[0]
+        return predSpeed[0]
 
     def __call__(self, *args, **kwargs):
         # cv2.imshow('Predicted Image', self.mask)
         error = self.findingLane()
+        if self.trafficSigns != '' or self.trafficSigns != 'straight':
+            error = self.findingLane(scale=45)
         angle = self.__PID(error, self.scale)
-        angle, speed = self.__conditionalSpeed(angle, error)
+        speed = self.__conditionalSpeed(angle, error)
         if speed > 40:
             speed = -1
         # print("Speed RF: ", speed)
@@ -177,6 +210,65 @@ class ModelPredictiveControl:
                 cost += 10000
 
         return cost
+
+    def __call__(self, *args, **kwargs):
+        start = time.process_time()
+        num_inputs = 2
+        # u: desire output
+        # y: predicted output
+        u = np.zeros(self.horizon * num_inputs)
+        bounds = []
+        # Set bounds for inputs bounded optimization.
+        for i in range(self.horizon):
+            bounds += [[-1, 1]]
+            bounds += [[-0.0, 0.0]]
+        ref = self.reference
+        state_i = np.array([[1, 0, 0, 0]])
+        u_i = np.array([[0, 0]])
+        sim_total = 100
+        predict_info = [state_i]
+        for i in range(1, sim_total + 1):
+            # Reuse old inputs as starting point to decrease run time.
+            u = np.delete(u, 0)
+            u = np.delete(u, 0)
+            u = np.append(u, u[-2])
+            u = np.append(u, u[-2])
+            u = np.zeros(self.horizon * num_inputs)
+            start_time = time.time()
+            # Non-linear optimization.
+            u_solution = minimize(self.cost_function, u, (state_i[-1], ref),
+                                  method='SLSQP',
+                                  bounds=bounds,
+                                  tol=1e-5)
+            print('Step ' + str(i) + ' of ' + str(sim_total) + '   Time ' + str(round(time.time() - start_time, 5)))
+            u = u_solution.x
+            y = self.plant_model(state_i[-1], self.dt, u[0], u[1])
+            predicted_state = np.array([y])
+            for j in range(1, self.horizon):
+                predicted = self.plant_model(predicted_state[-1], self.dt, u[2 * j], u[2 * j + 1])
+                predicted_state = np.append(predicted_state, np.array([predicted]), axis=0)
+            # Output
+            predict_info += [predicted_state]
+            state_i = np.append(state_i, np.array([y]), axis=0)
+            u_i = np.append(u_i, np.array([(u[0], u[1])]), axis=0)
+        return np.average(predict_info), np.average(u_i)
+
+
+class DeepQLearning:
+    def __init__(self, speed, angle):
+        self.speed = speed
+        self.angle = angle
+
+    def __call__(self, *args, **kwargs):
+        pass
+
+
+class QLearning:
+    def __init__(self):
+        pass
+
+    def __call__(self, *args, **kwargs):
+        pass
 
 # class TrafficSignsController(Controller):
 #     def __init__(self, mask, trafficSigns, speed):
