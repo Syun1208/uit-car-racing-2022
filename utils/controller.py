@@ -38,13 +38,20 @@ width = np.zeros(10)
 
 
 class Controller(imageProcessing, trafficSignsRecognition, Fuzzy):
-    def __init__(self, mask):
+    def __init__(self, mask, current_speed):
         trafficSignsRecognition.__init__(self, mask)
         self.trafficSigns = trafficSignsRecognition.__call__(self)
         imageProcessing.__init__(self, mask, mask[:, :mask.shape[1] // 2], mask[:, mask.shape[1] // 2:],
                                  self.trafficSigns)
         Fuzzy.__init__(self)
         self.mask, self.scale = imageProcessing.__call__(self)
+        self.current_speed = current_speed
+
+    def __reduceSpeed(self, speed):
+        if self.current_speed > 30:
+            return -2
+        else:
+            return speed
 
     def findingLane(self, scale=60):
         arr_normal = []
@@ -65,7 +72,7 @@ class Controller(imageProcessing, trafficSignsRecognition, Fuzzy):
         return int(self.mask.shape[1] / 2) - center
 
     @staticmethod
-    def __PID(error, scale=28, p=0.16, i=0, d=0.01):
+    def __PID(error, scale=28, p=0.25, i=0, d=0.01):
         global t
         global error_arr
         error_arr[1:] = error_arr[0:-1]
@@ -118,11 +125,11 @@ class Controller(imageProcessing, trafficSignsRecognition, Fuzzy):
         list_angle[1:] = list_angle[0:-1]
         list_angle[0] = abs(error)
         list_angle_train = np.array(list_angle).reshape((-1, 1))
-        predSpeed = np.dot(list_angle, - 0.1) + 32
+        predSpeed = np.dot(list_angle, - 0.2) + 28
         # predSpeed = np.add(np.dot(np.power(list_angle, 2), -0.1), np.dot(list_angle, 20)) + 50
-        list_data_expected_speed.append(np.average(predSpeed, axis=0))
+        # list_data_expected_speed.append(np.average(predSpeed, axis=0))
         # data['expected_speed'] = list_data_expected_speed
-        # reg = LinearRegression().fit(list_angle_train, speed)
+        #reg = LinearRegression().fit(list_angle_train, speed)
         reg = RandomForestRegressor(n_estimators=40, random_state=1).fit(list_angle_train, predSpeed)
         predSpeed = reg.predict(np.array(list_angle_train))
         # list_data_predicted_speed.append(predSpeed[0])
@@ -146,22 +153,23 @@ class Controller(imageProcessing, trafficSignsRecognition, Fuzzy):
             print('QÚA GHÊ GỚM ! VÀ ĐÂY LÀ PHOLOTINO !')
             if self.trafficSigns != 'straight' or angle < -4 or angle > 4:
                 start = time.time()
-                predSpeed[0] = 1
-                if time.time() - start > 5:
-                    predSpeed[0] = 5
+                predSpeed[0] = 3
+                if time.time() - start > 3:
+                    predSpeed[0] = 10
             elif self.trafficSigns == 'straight':
-                predSpeed[0] = 38
+                predSpeed[0] = 28
         return predSpeed[0]
 
     def __call__(self, *args, **kwargs):
         # cv2.imshow('Predicted Image', self.mask)
         error = self.findingLane()
         if self.trafficSigns != '' or self.trafficSigns != 'straight':
-            error = self.findingLane(scale=45)
+            error = self.findingLane(scale=42)
         angle = self.__PID(error, self.scale)
         speed = self.__conditionalSpeed(angle, error)
-        if speed > 40:
-            speed = -1
+        # if speed >= 30:
+        #     speed = speed - 25
+        speed = self.__reduceSpeed(speed)
         # print("Speed RF: ", speed)
         return angle, speed
 

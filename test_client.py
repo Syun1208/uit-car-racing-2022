@@ -31,7 +31,7 @@ sys.path.insert(0, WORK_DIR)
 
 def parser_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--port', type=int, help='Input your port connection', default=11000)
+    parser.add_argument('--port', '-p', type=int, help='Input your port connection', default=11000)
     parser.add_argument('--url', type=str, help='url downloading music',
                         default='https://stream.nixcdn.com/NhacCuaTui2029/DoanTuyetNangDiFrexsRemix-PhatHuyT4-7022889.mp3?st=SQkSrqlEECJcdathICmHdg&e=1666795517')
     return parser.parse_args()
@@ -78,6 +78,7 @@ def main():
     unity_api = Unity(args.port)
     unity_api.connect()
     print('BẤM ĐI BTC !')
+    current_speed = 0
     # frame = 0
     # out_sign = "straight"
     # flag_timer = 0
@@ -138,7 +139,7 @@ def main():
         # if trafficSigns != 'none' or trafficSigns != 'unknown' or trafficSigns is not None:
         # recognizeTrafficSigns = trafficSignsRecognition(image)
         # trafficSigns = recognizeTrafficSigns()
-        controller = Controller(image)
+        controller = Controller(image, current_speed)
         angle, speed = controller()
         # else:
         #     trafficSignsController = TrafficSignsController(image, trafficSigns, speed)
@@ -146,6 +147,8 @@ def main():
         # print("time: ", 1 / (time.time() - start_time))
         # unity_api.show_images(left_image, right_image)
         data = unity_api.set_speed_angle(speed, angle)  # speed: [0:100], angle: [-25:25]
+        # print('Speed: ', data['Speed'])
+        current_speed = data['Speed']
         # print('Angle: ', data['Angle'])
         # print('Traffic Signs: ', trafficSigns)
         # text1 = ["SPEED", "ANGLE", 'TRAFFIC SIGNS']
