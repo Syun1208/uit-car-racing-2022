@@ -27,7 +27,7 @@
 
 [Dowload link](https://drive.google.com/file/d/1S24XDlH59tueAPJYBmi0jPMY-7Zw6Odd/view?fbclid=IwAR20kjhgGz6XjPukK-mKMHYyziHs53W294v6n-zooweL_zvd5BLexKcxFkE)
 
-## Traffic Sign Classification
+## Traffic Sign Object Detection
 
 ### Network Architecture
 
@@ -48,7 +48,7 @@
 ### Project status
 
 - [x] Drivable Area Segmentation
-- [x] xxx
+- [x] Traffic Sign Object Detection
 - [x] Traffic sign classification
 - [ ] Control algorithm
 
