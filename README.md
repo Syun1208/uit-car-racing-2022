@@ -17,7 +17,7 @@
     run "DA segmentation.ipynb"
 ```
 
-## Traffic Sign Classification
+## Traffic Sign Object Detection
 
 ### YoloV4 tiny
 
@@ -27,7 +27,7 @@
 
 [Dowload link](https://drive.google.com/file/d/1S24XDlH59tueAPJYBmi0jPMY-7Zw6Odd/view?fbclid=IwAR20kjhgGz6XjPukK-mKMHYyziHs53W294v6n-zooweL_zvd5BLexKcxFkE)
 
-## Traffic Sign Object Detection
+## Traffic Sign Classification
 
 ### Network Architecture
 
