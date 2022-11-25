@@ -3,16 +3,11 @@
 ## Run code on Jetson Nano
 ### Convert Drivable Area Segmentation Model/Traffic Sign Classification Model to ONNX
 
-### Convert yolo to ONNX
 
+### Convert Yolo to TensorRT
 ```python
     cd CAR/yolo
-    run python3 yolo_to_onnx.py -m "model name"
-```
-
-### Convert onnx to TensorRT
-```python
-    cd CAR/yolo
+    python3 yolo_to_onnx.py -m "model name"
     python3 onnx_to_tensorrt.py -m "model name"
 ```
 
@@ -76,5 +71,6 @@
 - [ ] Control algorithm
 
 ***
+
 
 
