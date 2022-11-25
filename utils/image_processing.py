@@ -41,6 +41,17 @@ class imageProcessing:
         cv2.fillPoly(self.mask, polygonLeft, 0)
         return self.mask
 
+    def __ROIStraightNormally(self):
+        polygonLeft = np.array([
+            [(500, 0), (0, 150), (0, 0)]
+        ])
+        polygonRight = np.array([
+            [(100,0), (600, 150), (600, 0)]
+        ])
+        cv2.fillPoly(self.mask, polygonRight, 0)
+        cv2.fillPoly(self.mask, polygonLeft, 0)
+        return self.mask
+
     def __ROITurnLeft(self):
         polygonRight = np.array([
             [(0, 0), (0, 20), (600, 150), (600, 0)]
@@ -330,9 +341,12 @@ class imageProcessing:
             elif self.trafficSigns == 'no_left' or 'no_left' in trafficSignsRegister:
                 self.mask = self.__ROINoTurnLeft()
                 self.scale = 37
-            else:
+            elif self.trafficSigns == 'straight':
                 self.mask = self.__ROIStraight()
-                self.scale = 27.77
+                self.scale = 26
+            else:
+                self.mask = self.__ROIStraightNormally()
+                self.scale = 28
         if len(trafficSignsRegister) > 90:
             trafficSignsRegister.pop(-1)
         kernel = np.ones((15, 15), np.uint8)

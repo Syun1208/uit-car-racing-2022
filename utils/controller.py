@@ -72,7 +72,7 @@ class Controller(imageProcessing, trafficSignsRecognition, Fuzzy):
         return int(self.mask.shape[1] / 2) - center
 
     @staticmethod
-    def __PID(error, scale=28, p=0.25, i=0, d=0.01):
+    def __PID(error, scale=28, p=0.17, i=0, d=0.01):
         global t
         global error_arr
         error_arr[1:] = error_arr[0:-1]
@@ -125,12 +125,12 @@ class Controller(imageProcessing, trafficSignsRecognition, Fuzzy):
         list_angle[1:] = list_angle[0:-1]
         list_angle[0] = abs(error)
         list_angle_train = np.array(list_angle).reshape((-1, 1))
-        predSpeed = np.dot(list_angle, - 0.2) + 28
+        predSpeed = np.dot(list_angle, - 0.1) + 28
         # predSpeed = np.add(np.dot(np.power(list_angle, 2), -0.1), np.dot(list_angle, 20)) + 50
         # list_data_expected_speed.append(np.average(predSpeed, axis=0))
         # data['expected_speed'] = list_data_expected_speed
-        #reg = LinearRegression().fit(list_angle_train, speed)
-        reg = RandomForestRegressor(n_estimators=40, random_state=1).fit(list_angle_train, predSpeed)
+        # reg = LinearRegression().fit(list_angle_train, speed)
+        reg = RandomForestRegressor(n_estimators=40, random_state=0).fit(list_angle_train, predSpeed)
         predSpeed = reg.predict(np.array(list_angle_train))
         # list_data_predicted_speed.append(predSpeed[0])
         # list_data_angle.append(angle)
@@ -178,7 +178,7 @@ class ModelPredictiveControl:
     def __init__(self):
         self.horizon = 20
         self.dt = 0.2
-        # every element in input array u will be remain for dt seconds
+        # every element in input array u will be remained for dt seconds
         # here with horizon 20 and dt 0.2 we will predict 4 seconds ahead(20*0.2)
         # we can't predict too much ahead in time because that might be pointless and take too much computational time
         # we can't predict too less ahead in time because that might end up overshooting from end point as it won't be able to see the end goal in time
