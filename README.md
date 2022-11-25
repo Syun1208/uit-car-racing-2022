@@ -1,12 +1,12 @@
 # Autonomous Car ITcar
 
-## Run code on Jetson Nano
+## Run regconition tasks on Jetson Nano
 ### Convert Drivable Area Segmentation Model/Traffic Sign Classification Model to ONNX
 
 
-### Convert Yolo to TensorRT
+### Convert YOLO to TensorRT
 ```python
-    cd CAR/yolo
+    cd Recognition/yolo
     python3 yolo_to_onnx.py -m "model name"
     python3 onnx_to_tensorrt.py -m "model name"
 ```
@@ -14,7 +14,7 @@
 
 ### Run
 ```python
-    cd CAR
+    cd Recognition
     run "python3 run.py"
 ```
 
@@ -29,10 +29,10 @@
 
 ![da.jpg](picture/data_aug.jpg)
 
-### Traning
+### Training
 
 ```python
-    run "DA segmentation.ipynb"
+    run "training/DA segmentation.ipynb"
 ```
 
 ## Traffic Sign Object Detection
@@ -56,10 +56,10 @@
 [Dowload link](https://drive.google.com/drive/folders/1-11haKCpcDlAOxDNEM1b-Zg0JCIxWucO?fbclid=IwAR3WZ1En2ksc_T4W35QQEEGs3TTeh-IVhpReq4vRxprCDBMkNaBdf5vqCW8)
 
 
-### Traning
+### Training
 
 ```python
-    run "traffic sign classification.ipynb"
+    run "training/traffic sign classification.ipynb"
 ```
 
 
@@ -67,10 +67,12 @@
 
 - [x] Drivable Area Segmentation
 - [x] Traffic Sign Object Detection
-- [x] Traffic sign classification
+- [x] Traffic Sign Classification
+- [x] Hardware Control
 - [ ] Control algorithm
 
 ***
+
 
 
 
