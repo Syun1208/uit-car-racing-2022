@@ -238,7 +238,7 @@ class UITCar:
             self.__is_Print[i] = -1
         self.__device.clear()
 
-    def setAngle(self,CarAngle  ):
+    def setAngle(self,CarAngle):
         """- Chức năng: Điều chỉnh góc bẻ lái\n
         - Biến:\n
             + CarAngle(int): Giá trị góc bẻ lái từ -60 -> 60 \n
