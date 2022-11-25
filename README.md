@@ -49,7 +49,7 @@
 
 - [x] Drivable Area Segmentation
 - [x] Traffic Sign Object Detection
-- [x] Traffic sign classification
+- [x] Traffic Sign Classification
 - [ ] Control algorithm
 
 ***
