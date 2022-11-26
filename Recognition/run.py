@@ -1,9 +1,3 @@
-
-from PIL import Image
-import math
-
-
-
 from PIL import Image
 import math
 import os
@@ -22,7 +16,7 @@ from utils.visualization import BBoxVisualization
 from utils.yolo_with_plugins import TrtYOLO
 from utils.control import road_lines
 from imutils.video import VideoStream
-sess_options = onnxruntime.SessionOptions()
+#sess_options = onnxruntime.SessionOptions()
 
 DETEC = True
 SHOW_IMG = True
