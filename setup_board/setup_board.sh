@@ -6,3 +6,4 @@ pip3 install adafruit_pca9685
 pip3 install adafruit-circuitpython-servokit
 pip3 install luma.oled
 pip3 install pycuda
+pip3 install imutils
