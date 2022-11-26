@@ -27,6 +27,10 @@ sess_options = onnxruntime.SessionOptions()
 DETEC = True
 SHOW_IMG = True
 PRINT = False
+session_lane = onnxruntime.InferenceSession('lane_gpu.onnx',None,providers=['CPUExecutionProvider'])
+input_name_lane = session_lane.get_inputs()[0].name
+session_sign = onnxruntime.InferenceSession('sign1.onnx',None,providers=['CUDAExecutionProvider'])
+input_name_sign = session_sign.get_inputs()[0].name
 
 def gstreamer_pipeline(
     capture_width=640,
@@ -78,11 +82,6 @@ def loop_and_detect(cam, trt_yolo, conf_th, vis):
 
 
 
-    session_lane = onnxruntime.InferenceSession('lane_gpu.onnx',None,providers=['CPUExecutionProvider'])
-    input_name_lane = session_lane.get_inputs()[0].name
-
-    session_sign = onnxruntime.InferenceSession('sign1.onnx',None,providers=['CUDAExecutionProvider'])
-    input_name_sign = session_sign.get_inputs()[0].name
     fps = 0.02
     
     while True:
