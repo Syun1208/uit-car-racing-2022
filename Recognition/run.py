@@ -1,9 +1,3 @@
-
-from PIL import Image
-import math
-
-
-
 from PIL import Image
 import math
 import os
