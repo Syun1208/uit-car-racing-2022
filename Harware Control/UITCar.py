@@ -303,10 +303,12 @@ class UITCar:
         """
         if mode == 0:
             self.__MotorMode = 0
-            unl = bytearray("N1 $004=3 \n","ascii")
+            # unl = bytearray("N1 $004=3 \n","ascii")
+            unl = bytearray("N1 O M3 \n","ascii")
         elif mode == 1:
             self.__MotorMode = 1
-            unl = bytearray("N1 $004=2 \n","ascii")
+            # unl = bytearray("N1 $004=2 \n","ascii")
+            unl = bytearray("N1 O M2 \n","ascii")
         else:
             raise ValueError("mode khong hop le")
         with self.__MotorLock:
@@ -314,8 +316,10 @@ class UITCar:
         print("Set mode ", self.__MotorMode)
     
     def setPosition_rad(self, position, velo):
-        if self.__MotorMode == 1: 
-            td = bytearray("N1 P%.2f v%.2f a100\n"%(position, velo),"ascii")
+        if self.__MotorMode == 1:
+            position+= self.getPosition_rad()
+            td = bytearray("N1 p%.2f v%.2f\n"%(position, velo),"ascii")
+            print("SetPos ", td)
             with self.__MotorLock:
                 self.__serial_port.write(td)
         else:
