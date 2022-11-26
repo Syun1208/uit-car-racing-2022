@@ -25,7 +25,7 @@ def CM2Rad(cm):
 
 #global variable
 Car_MaxAngle = 90
-Car_MaxSpeed_rad = 27
+Car_MaxSpeed_rad = 28
 Car_MaxSpeed_cm = Rad2CM(Car_MaxSpeed_rad)
 ServoChannel = 0
 
@@ -37,6 +37,8 @@ _ServoOEPin = "DAP4_SCLK"
 
 _BTNBoucneTime = 1000
 _WheelDiameter = 6.5    #Unit: cm
+
+_MotorUpdateTime = 0.01 # Unit Seconds
 
 class UITCar:
     #private variable:
@@ -272,7 +274,7 @@ class UITCar:
             CarSpeed = np.round(CarSpeed,2)
             ID = 1
             Buff = bytearray("N%i v%.2f a50\r\n"%(ID, CarSpeed),"ascii")  
-            print("Set speed Buff ", Buff)
+            # print("Set speed Buff ", Buff)
             with self.__MotorLock:
                 self.__serial_port.write(Buff)
             pass
@@ -335,7 +337,7 @@ class UITCar:
         while True:
             self.__motorReqData()
             self.__OLED_Display()
-            time.sleep(0.1)
+            time.sleep(_MotorUpdateTime)
             
     def __motorUnlock(self):
         unl = bytearray("N1 O U\n","ascii")
@@ -411,7 +413,7 @@ class UITCar:
         - Biến:     None \n
         - Trả về:   Giá trị vận tốc hiện tại\n
         """
-        return Rad2CM(self.getSpeed_round())
+        return Rad2CM(self.getSpeed_rad())
 
     def getMotor_Current(self) ->float:
         """
