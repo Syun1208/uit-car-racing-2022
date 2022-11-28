@@ -1,12 +1,12 @@
 
 
 COCO_CLASSES_LIST = [
-    'end20',
-    'start20',
-    'thang',
+    'camtrai',
+    'camphai',
+    'camthang',
     'trai',
     'phai',
-    'stop'
+    'thang'
 ]
 
 
