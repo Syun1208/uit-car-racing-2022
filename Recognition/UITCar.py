@@ -165,10 +165,9 @@ class UITCar:
         - Biến: None\n
         - Trả về: None
         """
-        
         with canvas(self.__device) as draw:
-           self.__Update_Angle(draw)
-           self.__Printt(draw)
+            self.__Update_Angle(draw)
+            self.__Printt(draw)
     def __Update_Angle(self,draw):       
         padding = 2
         top = 0
@@ -268,7 +267,7 @@ class UITCar:
         """
         Ang = self.__kit.servo[ServoChannel].angle - 90
         return int(Ang)+1 if int(Ang) != 0 else 0
-    def setSpeed_rad(self, CarSpeed):
+    def setSpeed_rad(self, CarSpeed: float):
         """- Chức năng: Điều chỉnh vận tốc của động cơ theo đơn vị rad/s\n
         - Biến:\n
             + CarSpeed(float): Giá trị vận tốc của động cơ từ -20 -> 20 \n
@@ -281,7 +280,7 @@ class UITCar:
             CarSpeed = np.round(CarSpeed,2)
             ID = 1
             inf = ""
-            Buff = bytearray("N%i v%i a600 \n"%(ID, CarSpeed),"ascii")  
+            Buff = bytearray("N%i v%i \n"%(ID, CarSpeed),"ascii")  
             self.__serial_port.write(Buff)
             pass
         else:

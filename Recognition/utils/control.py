@@ -15,4 +15,4 @@ def road_lines(image, session, inputname):
 	prediction = np.where(prediction < 0.5, 0, 255)
 	prediction = prediction.reshape(80, 160)
 	prediction = prediction.astype(np.uint8)
-	return prediction
+	return cv2.cvtColor(prediction,cv2.COLOR_GRAY2RGB)
