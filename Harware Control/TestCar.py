@@ -16,7 +16,7 @@ Car.setMotorMode(0)
 Car.setSpeed_cm(90)
 
 CurrentPos = Car.getPosition_cm()
-Car.setAngle(30)
+Car.setAngle(0)
 print("Start Pos ", CurrentPos)
 while(Car.getPosition_cm() - CurrentPos < 1000):
     time.sleep(0.1)
@@ -29,7 +29,7 @@ print("Motor Mode 0 Done")
 print("Start Motor Mode 1")
 
 Car.setMotorMode(1)
-Car.setAngle(-30)
+Car.setAngle(-20)
 Car.setPosition_cm(1000, 70)
 # time.sleep(0.5)
 while(Car.getSpeed_cm()!= 0):
@@ -37,4 +37,14 @@ while(Car.getSpeed_cm()!= 0):
     print("Car Speed ", Car.getSpeed_cm())
     print("Car Pos ", Car.getPosition_cm())
 
-print("Motor Mode 1 Done")
+time.sleep(2)
+Car.setAngle(20)
+Car.setPosition_cm(1000, 70)
+time.sleep(0.1)
+while(Car.getSpeed_cm()!= 0):
+    time.sleep(0.1)
+    print("Car Speed ", Car.getSpeed_cm())
+    print("Car Pos ", Car.getPosition_cm())
+time.sleep(1)
+print("Car Speed ", Car.getSpeed_cm())
+print("Car Pos ", Car.getPosition_cm())
