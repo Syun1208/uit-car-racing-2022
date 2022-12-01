@@ -67,6 +67,11 @@ def draw_boxed_text(img, text, topleft, color):
     return img
 
 def sign_classify(img,session,inputname):
+   """
+   img: the input image as a numpy array.
+   session: session của model sign vd session_sign
+   inputname: vd input_name_sign
+   """
    X_test=cv2.resize(X_test,(30, 30))
    X_test = X_test.reshape(1,30,30,3)
    X_test = X_test.astype('float32')/255
