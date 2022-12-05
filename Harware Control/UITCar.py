@@ -38,7 +38,7 @@ _ServoOEPin = "DAP4_SCLK"
 _BTNBoucneTime = 1000
 _WheelDiameter = 6.5    #Unit: cm
 
-_MotorUpdateTime = 0.01 # Unit Seconds
+_MotorUpdateTime = 0.2 # Unit Seconds
 
 class UITCar:
     #private variable:
