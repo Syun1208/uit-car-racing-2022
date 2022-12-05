@@ -38,8 +38,8 @@ _ServoOEPin = "DAP4_SCLK"
 _BTNBoucneTime = 1000
 _WheelDiameter = 6.5    #Unit: cm
 
-_MotorUpdateTime = 0.2 # Unit Seconds
-
+_MotorUpdateTime = 0.01 # Unit Seconds
+_SerialTimeout  = 0.1
 class UITCar:
     #private variable:
     __kit = ServoKit(channels=16)   #servo
@@ -113,7 +113,7 @@ class UITCar:
         self.__serial_port.bytesize=serial.EIGHTBITS
         self.__serial_port.parity=serial.PARITY_NONE
         self.__serial_port.stopbits=serial.STOPBITS_ONE
-        self.__serial_port.timeout=1
+        self.__serial_port.timeout=_SerialTimeout
         self.__serial_port.open()
 
         self.__motorChangeControl()
@@ -319,7 +319,6 @@ class UITCar:
         if self.__MotorMode == 1:
             position+= self.getPosition_rad()
             td = bytearray("N1 p%.2f v%.2f a50\n"%(position, velo),"ascii")
-            print("SetPos ", td)
             with self.__MotorLock:
                 self.__serial_port.write(td)
         else:
@@ -364,11 +363,13 @@ class UITCar:
         self.__serial_port.write(buff)
 
     def __motorReqData(self):
+            start = time.time()
             Lenh = bytearray("N1 O G1 \n","ascii")
             with self.__MotorLock:
                 self.__serial_port.write(Lenh)
                 # self.__serial_port.timeout = 0.01
-                inf = self.__serial_port.read_until("\r")
+                inf = self.__serial_port.read_until("  ")
+            # print("Read Cost Time ", time.time()- start)
             # print("inf ", inf)
             if(inf != None):
                 try:
@@ -384,6 +385,7 @@ class UITCar:
                 except:
                     with self.__MotorLock:
                         self.Motor_ClearErr()
+            # print("Req Cost Time ", time.time()- start)
             # Tinh van toc m/s  
             # Bán kính bánh => Chu vi = 2 * bán kính * 3.14
             # Một vòng thì sẽ đi hết ... <Chu vi bánh> => vt*chu vi bánh

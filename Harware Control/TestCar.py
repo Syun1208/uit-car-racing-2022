@@ -40,7 +40,8 @@ while(Car.getSpeed_cm()!= 0):
 time.sleep(2)
 Car.setAngle(20)
 Car.setPosition_cm(200, 70)
-time.sleep(0.1)
+while(Car.getSpeed_cm()==0):
+    time.sleep(0.1)
 while(Car.getSpeed_cm()!= 0):
     time.sleep(0.1)
     print("Car Speed ", Car.getSpeed_cm())
