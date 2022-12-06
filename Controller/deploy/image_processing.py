@@ -43,22 +43,22 @@ class imageProcessing:
         self.scale = 0
         self.trafficSigns = trafficSigns
 
-    def __ROIthangNormally(self):
+    def __ROIStraightNormally(self):
         polygonRight = np.array([
             [(self.width // 2, 0), (0, self.height), (0, 0)]
         ])
         polygonLeft = np.array([
             [(self.width // 2, 0), (self.width, self.height), (self.width, 0)]
         ])
-        # polygonthang = np.array([
+        # polygonStraight = np.array([
         #     [(self.width, self.height), (self.width // 2, 0), (0, self.height)]
         # ])
         cv2.fillPoly(self.mask, polygonRight, 0)
         cv2.fillPoly(self.mask, polygonLeft, 0)
-        # cv2.fillPoly(self.mask, polygonthang, (255, 255, 255))
+        # cv2.fillPoly(self.mask, polygonStraight, (255, 255, 255))
         return self.mask
 
-    def __ROIthang(self):
+    def __ROIStraight(self):
         polygonLeft = np.array([
             [(self.width, 0), (self.width, 17 * self.height // 150), (0, self.height), (0, 0)]
         ])
@@ -306,10 +306,10 @@ class imageProcessing:
                 self.mask = self.__ROINoTurnLeft()
                 self.scale = 37
             elif self.trafficSigns == 'thang':
-                self.mask = self.__ROIthang()
+                self.mask = self.__ROIStraight()
                 self.scale = 26
             else:
-                self.mask = self.__ROIthangNormally()
+                self.mask = self.__ROIStraightNormally()
                 self.scale = 28
         if len(trafficSignsRegister) > 90:
             trafficSignsRegister.pop(-1)
