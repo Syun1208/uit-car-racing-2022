@@ -26,7 +26,7 @@ DETEC = True
 SHOW_IMG = True
 PRINT = False
 Car = UITCar()
-session_lane = onnxruntime.InferenceSession('weights/lane_gpu.onnx', None, providers=['CPUExecutionProvider'])
+session_lane = onnxruntime.InferenceSession('weights/lane.onnx', None, providers=['CPUExecutionProvider'])
 input_name_lane = session_lane.get_inputs()[0].name
 session_sign = onnxruntime.InferenceSession('sign_new.onnx', None, providers=['CUDAExecutionProvider'])
 input_name_sign = session_sign.get_inputs()[0].name
@@ -163,6 +163,7 @@ def main():
     print("++++++++++++++++++Read model done+++++++++++++++++")
     vis = BBoxVisualization(cls_dict)  # gọi instance BBoxVisualization với thông số mặc định là danh sách các lớp
     # m=None
+    '''----------------------------Controller--------------------------------------------'''
     loop_and_detect(cam, trt_yolo, conf_th=0.7, vis=vis)  # vào vòng lặp để dự đoán liên tục
 
     cam.stream.release()  # release camera
