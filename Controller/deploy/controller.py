@@ -4,8 +4,8 @@ from sklearn.ensemble import RandomForestRegressor
 import numpy as np
 
 t = time.time()
-error_arr = list()
-list_angle = list()
+error_arr = np.zeros(5)
+list_angle = np.zeros(5)
 
 
 class Controller(imageProcessing):
