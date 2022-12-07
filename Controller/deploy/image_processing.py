@@ -119,20 +119,20 @@ class imageProcessing:
         print("Area: ", max(list_area))
         return max(list_area)
 
-    def __removeSmallContours(self):
-        image_binary = np.zeros((self.mask.shape[0], self.mask.shape[1]), np.uint8)
-        contours = cv2.findContours(self.mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)[0]
-        masked = cv2.drawContours(image_binary, [max(contours, key=cv2.contourArea)], -1, (255, 255, 255), -1)
-        image_remove = cv2.bitwise_and(self.mask, self.mask, mask=masked)
-        return image_remove
-
-    def __convertGreen2White(self):
-        self.mask = cv2.cvtColor(self.mask, cv2.COLOR_BGR2GRAY)
-        se = cv2.getStructuringElement(cv2.MORPH_RECT, (8, 8))
-        bg = cv2.morphologyEx(self.mask, cv2.MORPH_DILATE, se)
-        out_gray = cv2.divide(self.mask, bg, scale=255)
-        self.mask = cv2.threshold(out_gray, 0, 255, cv2.THRESH_OTSU)[1]
-        self.mask = self.__removeSmallContours()
+    # def __removeSmallContours(self):
+    #     image_binary = np.zeros((self.mask.shape[0], self.mask.shape[1]), np.uint8)
+    #     contours = cv2.findContours(self.mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)[0]
+    #     masked = cv2.drawContours(image_binary, [max(contours, key=cv2.contourArea)], -1, (255, 255, 255), -1)
+    #     image_remove = cv2.bitwise_and(self.mask, self.mask, mask=masked)
+    #     return image_remove
+    #
+    # def __convertGreen2White(self):
+    #     self.mask = cv2.cvtColor(self.mask, cv2.COLOR_BGR2GRAY)
+    #     se = cv2.getStructuringElement(cv2.MORPH_RECT, (8, 8))
+    #     bg = cv2.morphologyEx(self.mask, cv2.MORPH_DILATE, se)
+    #     out_gray = cv2.divide(self.mask, bg, scale=255)
+    #     self.mask = cv2.threshold(out_gray, 0, 255, cv2.THRESH_OTSU)[1]
+    #     self.mask = self.__removeSmallContours()
 
     @staticmethod
     def __extend_line(p1, p2, distance=500):
@@ -315,5 +315,5 @@ class imageProcessing:
             trafficSignsRegister.pop(-1)
         kernel = np.ones((15, 15), np.uint8)
         self.mask = cv2.dilate(self.mask, kernel, iterations=1)
-        self.mask = self.__removeSmallContours()
+        # self.mask = self.__removeSmallContours()
         return self.mask, self.scale
