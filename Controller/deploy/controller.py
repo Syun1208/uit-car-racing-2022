@@ -10,8 +10,12 @@ list_angle = list()
 
 class Controller(imageProcessing):
     def __init__(self, image, trafficSigns, current_speed):
-        super(Controller, self).__init__(image, trafficSigns)
-        self.trafficSigns = trafficSigns
+        # super(Controller, self).__init__(image, trafficSigns)
+        if not trafficSigns:
+            trafficSigns = [-1]
+        self.trafficSigns = list(['camtrai', 'camphai', 'camthang', 'trai', 'phai', 'thang', 'none'])[
+            int(trafficSigns[0])]
+        imageProcessing.__init__(self, image, self.trafficSigns)
         self.mask, self.scale = imageProcessing.__call__(self)
         self.current_speed = current_speed
 
@@ -65,16 +69,14 @@ class Controller(imageProcessing):
         # reg = LinearRegression().fit(list_angle_train, speed)
         reg = RandomForestRegressor(n_estimators=30, random_state=1).fit(list_angle_train, predSpeed)
         predSpeed = reg.predict(np.array(list_angle_train))
-        if predSpeed[0] > 15:
-            predSpeed[0] = -2
         return angle, predSpeed[0]
 
     def __call__(self, *args, **kwargs):
         error = self.findingLane()
-        if self.trafficSigns is not None or self.trafficSigns != 'thang':
+        if not self.trafficSigns or self.trafficSigns != 'none' or self.trafficSigns != 'thang':
             error = self.findingLane(scale=42)
-        angle = self.__PID(error=error, scale=self.scale)
-        speed = self.__conditionalSpeed(angle, error)
+        angle = self.__PID(error, self.scale)
+        angle, speed = self.__conditionalSpeed(angle, error)
         speed = self.__reduceSpeed(speed)
         angle = angle * 60 / 25
         return angle, speed

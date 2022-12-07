@@ -100,7 +100,7 @@ def BTN3_Func(channel):
 def loop_and_detect(cam, trt_yolo, conf_th, vis):
     fps = 0.02
     Car.regBTN(1, BTN1_Func)
-    Car.setMotorMode(0)
+    Car.setMotorMode(0)  # 0: controlled by speed, 1: controlled by distance.
     Car.setSpeed_rad(20)
     while True:
 
