@@ -66,20 +66,7 @@ def draw_boxed_text(img, text, topleft, color):
     cv2.addWeighted(patch[0:h, 0:w, :], ALPHA, roi, 1 - ALPHA, 0, roi)
     return img
 
-def sign_classify(img,session,inputname):
-   """
-   img: the input image as a numpy array.
-   session: session của model sign vd session_sign
-   inputname: vd input_name_sign
-   """
-   X_test=cv2.resize(X_test,(30, 30))
-   X_test = X_test.reshape(1,30,30,3)
-   X_test = X_test.astype('float32')/255
-   prediction = session.run(None,{inputname:X_test})
-   prediction = np.squeeze(prediction) 
-   cl =np.argmax(prediction)
-   return cl
-              
+
 class BBoxVisualization():
     """BBoxVisualization class implements nice drawing of boudning boxes.
 
@@ -91,16 +78,43 @@ class BBoxVisualization():
         self.cls_dict = cls_dict
         self.colors = gen_colors(len(cls_dict))
 
-    def draw_bboxes(self, img, boxes, confs, clss):
+    def draw_bboxes(self, img, boxes, confs, clss,session,inputname):
         """vẽ bounding boxes."""
+        centers=[]
+        cll=-1
+        prediction=-1
+        area=-1
         for bb, cf, cl in zip(boxes, confs, clss):
             cl = int(cl)
+            cll=cl
+            
             x_min, y_min, x_max, y_max = bb[0], bb[1], bb[2], bb[3]
+            if cl == 2 or cl ==3 or cl == 4:          #nếu là đi thẳng, quẹo trái, quẹo phải thì phải kiểm trả 1 model CNN nữa để nhận diện
+              X_test=img[y_min:y_max,x_min:x_max]
+              X_test=cv2.resize(X_test,(30, 30))
+              X_test = X_test.astype('float32')/255
+              X_test = X_test.reshape(1,30,30,3)
+              
+              prediction = session.run(None,{inputname:X_test})
+              prediction = np.squeeze(prediction) 
+              cl =np.argmax(prediction)+2
+              # cl = int(cl)
+              cll=cl
             color = self.colors[cl]
             cv2.rectangle(img, (x_min, y_min), (x_max, y_max), color, 2)
             txt_loc = (max(x_min+2, 0), max(y_min+2, 0))
             cls_name = self.cls_dict.get(cl, 'CLS{}'.format(cl))
             txt = '{} {:.2f}'.format(cls_name, cf)
             img = draw_boxed_text(img, txt, txt_loc, color)
-        return img
+            c=y_max-y_min
+            d=x_max-x_min
+            area=c*d
+            # if (c/d<1.5 or d/c <1.5)and c*d >6 and c*d <40000:
+            x=int((x_min+ x_max)/2.0)
+            y=int((y_min+y_max)/2.0)
+            b = np.array([[x], [y]])
+            centers.append(np.round(b))
+            # return img,centers,cl
+        print(area)
+        return img,centers,cll,area
         

@@ -1,30 +1,39 @@
+
 from PIL import Image
 import math
+
+
+from PIL import Image
+import math
+
+
 import os
 import time
 import argparse
 import numpy as np
 import onnxruntime
-# import psutil
 import sys
 import time
 import cv2
 import pycuda.autoinit  
 from utils.yolo_classes import get_cls_dict
-from utils.display import show_fps
+
+from utils.display import open_window, set_display, show_fps
 from utils.visualization import BBoxVisualization
 from utils.yolo_with_plugins import TrtYOLO
 from utils.control import road_lines
 from imutils.video import VideoStream
-#sess_options = onnxruntime.SessionOptions()
+import UITCar
+import time
+sess_options = onnxruntime.SessionOptions()
 
+SSH = False
 DETEC = True
 SHOW_IMG = True
 PRINT = False
-session_lane = onnxruntime.InferenceSession('lane_gpu.onnx',None,providers=['CPUExecutionProvider'])
-input_name_lane = session_lane.get_inputs()[0].name
-session_sign = onnxruntime.InferenceSession('sign_new.onnx',None,providers=['CUDAExecutionProvider'])
-input_name_sign = session_sign.get_inputs()[0].name
+
+
+
 
 def gstreamer_pipeline(
     capture_width=640,
@@ -52,7 +61,6 @@ def gstreamer_pipeline(
             display_height,
         )
     )
-# import copy
 
 def parse_args():
     """Parse input arguments."""
@@ -66,18 +74,29 @@ def parse_args():
         help='number of object categories [6]')
     #chọn model
     parser.add_argument(
-        '-m', '--model', type=str,default='yolo-tiny-6cl-416',
-        help=('model object detection'))
+        '-m', '--model', type=str, default='yolo-tiny-6cl-416',
+        help=('[yolov3|yolov3-tiny|yolov3-spp|yolov4|yolov4-tiny]-'
+              '[{dimension}], where dimension could be a single '
+              'number (e.g. 288, 416, 608) or WxH (e.g. 416x256)'))
     args = parser.parse_args()
     return args
 
 
 def loop_and_detect(cam, trt_yolo, conf_th, vis):
+    Car = UITCar.UITCar()
 
 
+    
+    session_lane = onnxruntime.InferenceSession(
+        'lane_gpu.onnx', None, providers=['CPUExecutionProvider'])
+    input_name_lane = session_lane.get_inputs()[0].name
+    session_sign = onnxruntime.InferenceSession(
+        'sign_new.onnx', None, providers=['CUDAExecutionProvider'])
+    input_name_sign = session_sign.get_inputs()[0].name
 
     fps = 0.02
-    
+    start_time_detect=time.time()
+    Car.setMotorMode(0)
     while True:
 
         tic = time.time()
@@ -85,31 +104,65 @@ def loop_and_detect(cam, trt_yolo, conf_th, vis):
         if img is None:
             print("None")
             break
-        # try:          
-        DAsegmetation= road_lines(np.copy(img)  , session=session_lane,inputname=input_name_lane)    #hàm segment làn đường trả về ảnh đã segment
+        try:        
+            copyImage = np.copy(img)            
 
-        boxes, confs, clss = trt_yolo.detect(img, conf_th)              #trả về boxes: chứa tọa độ bounding box, phần trăm dự đoán, và phân lớp
-        
-        
-        
-        if SHOW_IMG:
-            # hàm vẽ bounding box lên ảnh
-            img = vis.draw_bboxes(img, boxes, confs, clss)
+            DAsegmentation, steering, center = road_lines(copyImage, session=session_lane,inputname=input_name_lane)    #hàm detect làn đường trả về ảnh đã detect, góc lái, với điểm center dự đoán      
+
+            boxes, confs, clss = trt_yolo.detect(img, conf_th)              #trả về boxes: chứa tọa độ bounding box, phần trăm dự đoán, và phân lớp
+            if(len(confs)>0):                                               #nếu nhận diện được biển báo
+                #chỉ lấy ra đối tượng có phần trăm dự đoán cao nhất
+                index=np.argmax(confs)                                      
+                confs=[confs[index]]                                        
+                classDetect=int(clss[index])
+                clss=[clss[index]]
+            # hàm vẽ bounding box lên ảnh, trả về ảnh đã vẽ, center của các đối tượng, phân lớp, và diện tích của boundingbox
+            img, centers, class_TS, area = vis.draw_bboxes(
+                img, boxes, confs, clss, session=session_sign, inputname=input_name_sign)
+
+            if (len(centers) > 0):                                                      #nếu phát hiện đối tượng                                                                
+                #phải sau 2s so với lần xử lý biển báo trước thì mới cho xử lý biển báo tiếp theo 
+                if time.time()-start_time_detect>2 and area >2400:    
+                    if class_TS == 're trai':
+                        print('re trai')
+            
+                    elif class_TS == 'di thang':
+                        print('di thang')
+                    start_time_detect = time.time()
+            #####------Điều khiển-----------------------
+            img = show_fps(img, fps)
+            speed=60
+            if (abs(steering)>50):          #nếu dự đoán góc trên 50 thì cho bẻ góc tối đa
+                if(steering>50):
+                    steering=50
+                elif(steering<-50):
+                    steering=-50               
+                Car.setAngle(-steering*0.8)
+
+            elif(abs(steering)<20):
+                Car.setAngle(-steering*0.7)
+            else:                           
+                Car.setAngle(-steering*0.8)
+
+            Car.setSpeed_cm(speed)
+            #####------Điều khiển-----------------------
+            if SHOW_IMG:
+                img[:DAsegmentation.shape[0],img.shape[1]-DAsegmentation.shape[1]:,:]=DAsegmentation
+                cv2.imshow('merge',img)
+
             toc = time.time()
             fps = 1.0 / (toc - tic)
-            img = show_fps(img, fps)
-            img[:DAsegmetation.shape[0], img.shape[1] -
-                DAsegmetation.shape[1]:, :] = DAsegmetation
-            cv2.imshow('merge',img)
-        key = cv2.waitKey(1)
-        if key == 27:  # ESC key: quit program
-            break
+            key = cv2.waitKey(1)
+            if key == 27:  # ESC key: quit program
+                break
             
-        # except Exception as inst:
-        #     print(type(inst))    # the exception instance
-        #     print(inst)
-        #     pass
-
+        except Exception as inst:
+            print(type(inst))    # the exception instance
+            print(inst)
+            pass
+    Car.setAngle(0)
+    Car.setSpeed_cm(0)
+    del Car
 
 
 def main():
@@ -140,7 +193,7 @@ def main():
     print("++++++++++++++++++Read model done+++++++++++++++++")
     vis = BBoxVisualization(cls_dict)                                           #gọi instance BBoxVisualization với thông số mặc định là danh sách các lớp
     # m=None
-    loop_and_detect(cam, trt_yolo, conf_th=0.7, vis=vis)                        #vào vòng lặp để dự đoán liên tục
+    loop_and_detect(cam, trt_yolo, conf_th=0.5, vis=vis)                        #vào vòng lặp để dự đoán liên tục
     
     cam.stream.release()                                                        #release camera
     cam.stop()
@@ -150,3 +203,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    

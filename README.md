@@ -69,7 +69,7 @@
 - [x] Traffic Sign Object Detection
 - [x] Traffic Sign Classification
 - [x] Hardware Control
-- [ ] Control algorithm
+- [x] Control algorithm
 
 ***
 
