@@ -89,17 +89,20 @@ class BBoxVisualization():
             cll=cl
             
             x_min, y_min, x_max, y_max = bb[0], bb[1], bb[2], bb[3]
-            if cl == 2 or cl ==3 or cl == 4:          #nếu là đi thẳng, quẹo trái, quẹo phải thì phải kiểm trả 1 model CNN nữa để nhận diện
-              X_test=img[y_min:y_max,x_min:x_max]
-              X_test=cv2.resize(X_test,(30, 30))
-              X_test = X_test.astype('float32')/255
-              X_test = X_test.reshape(1,30,30,3)
-              
-              prediction = session.run(None,{inputname:X_test})
-              prediction = np.squeeze(prediction) 
-              cl =np.argmax(prediction)+2
-              # cl = int(cl)
-              cll=cl
+            # if cl == 2 or cl ==3 or cl == 4:          #nếu là đi thẳng, quẹo trái, quẹo phải thì phải kiểm trả 1 model CNN nữa để nhận diện
+
+            ##------verify-------------
+            X_test=img[y_min:y_max,x_min:x_max]
+            X_test=cv2.resize(X_test,(30, 30))
+            X_test = X_test.astype('float32')/255
+            X_test = X_test.reshape(1,30,30,3)
+            
+            prediction = session.run(None,{inputname:X_test})
+            prediction = np.squeeze(prediction) 
+            cl =np.argmax(prediction)
+            # cl = int(cl)
+            cll=cl
+            ##-------------------------
             color = self.colors[cl]
             cv2.rectangle(img, (x_min, y_min), (x_max, y_max), color, 2)
             txt_loc = (max(x_min+2, 0), max(y_min+2, 0))
@@ -114,7 +117,6 @@ class BBoxVisualization():
             y=int((y_min+y_max)/2.0)
             b = np.array([[x], [y]])
             centers.append(np.round(b))
-            # return img,centers,cl
-        print(area)
+
         return img,centers,cll,area
         
