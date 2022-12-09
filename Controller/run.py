@@ -114,6 +114,12 @@ def loop_and_detect(cam, trt_yolo, conf_th, vis):
                                         inputname=input_name_lane)  # hàm segment làn đường trả về ảnh đã segment
         boxes, confs, clss = trt_yolo.detect(img,
                                              conf_th)  # trả về boxes: chứa tọa độ bounding box, phần trăm dự đoán, và phân lớp
+        if len(confs) > 0.5:  # nếu nhận diện được biển báo
+            # chỉ lấy ra đối tượng có phần trăm dự đoán cao nhất
+            index = np.argmax(confs)
+            confs = [confs[index]]
+            classDetect = int(clss[index])
+            clss = [clss[index]]
         controller = Controller(image_segmentation, clss, Car.getSpeed_rad())
         angle, speed = controller()
         set_angle_speed(angle, speed)

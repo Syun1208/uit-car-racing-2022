@@ -1,5 +1,3 @@
-
-
 COCO_CLASSES_LIST = [
     'camtrai',
     'camphai',
