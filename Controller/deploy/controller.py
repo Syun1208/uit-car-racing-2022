@@ -20,12 +20,12 @@ class Controller(imageProcessing):
         self.current_speed = current_speed
 
     def __reduceSpeed(self, speed):
-        if self.current_speed > 18:
+        if self.current_speed > 20:
             return -2
         else:
             return speed
 
-    def findingLane(self, scale=60):
+    def findingLane(self, scale=40):
         arr_normal = []
         height = self.mask.shape[0] - scale
         lineRow = self.mask[height, :]
@@ -44,7 +44,7 @@ class Controller(imageProcessing):
         return int(self.mask.shape[1] / 2) - center
 
     @staticmethod
-    def __PID(error, scale=28, p=0.15, i=0, d=0.01):
+    def __PID(error, scale=28, p=0.43, i=0, d=0.05):
         global t
         global error_arr
         error_arr[1:] = error_arr[0:-1]
@@ -56,8 +56,8 @@ class Controller(imageProcessing):
         I = np.sum(error_arr) * delta_t * i
         angle = P + I + D
         # angle = self.__optimizeFuzzy(angle)
-        if abs(angle) > 5:
-            angle = np.sign(angle) * 40
+        if abs(angle) > 50:
+            angle = np.sign(angle) * 50
         return - int(angle) * scale / 50
 
     @staticmethod
@@ -65,16 +65,17 @@ class Controller(imageProcessing):
         list_angle[1:] = list_angle[0:-1]
         list_angle[0] = abs(error)
         list_angle_train = np.array(list_angle).reshape((-1, 1))
-        predSpeed = np.dot(list_angle, - 0.1) + 15
+        predSpeed = np.dot(list_angle, - 0.1) + 20
         # reg = LinearRegression().fit(list_angle_train, speed)
-        reg = RandomForestRegressor(n_estimators=30, random_state=1).fit(list_angle_train, predSpeed)
+        reg = RandomForestRegressor(n_estimators=40, random_state=1).fit(list_angle_train, predSpeed)
         predSpeed = reg.predict(np.array(list_angle_train))
         return angle, predSpeed[0]
 
     def __call__(self, *args, **kwargs):
         error = self.findingLane()
+        print('Traffic Sign: ', self.trafficSigns)
         if not self.trafficSigns or self.trafficSigns != 'none' or self.trafficSigns != 'thang':
-            error = self.findingLane(scale=42)
+            error = self.findingLane(scale=30)
         angle = self.__PID(error, self.scale)
         angle, speed = self.__conditionalSpeed(angle, error)
         speed = self.__reduceSpeed(speed)
