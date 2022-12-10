@@ -15,7 +15,6 @@ from utils.yolo_classes import get_cls_dict
 from utils.display import show_fps
 from utils.visualization import BBoxVisualization
 from utils.yolo_with_plugins import TrtYOLO
-from deploy.image_processing import imageProcessing
 from deploy.controller import Controller
 from utils.control import road_lines
 from imutils.video import VideoStream
@@ -26,7 +25,7 @@ DETEC = True
 SHOW_IMG = True
 PRINT = False
 Car = UITCar()
-session_lane = onnxruntime.InferenceSession('weights/lane.onnx', None, providers=['CPUExecutionProvider'])
+session_lane = onnxruntime.InferenceSession('weights/lane_mod.onnx', None, providers=['CPUExecutionProvider'])
 input_name_lane = session_lane.get_inputs()[0].name
 session_sign = onnxruntime.InferenceSession('sign_new.onnx', None, providers=['CUDAExecutionProvider'])
 input_name_sign = session_sign.get_inputs()[0].name
@@ -34,6 +33,16 @@ input_name_sign = session_sign.get_inputs()[0].name
 
 def set_angle_speed(angle, speed):
     Car.setAngle(angle)
+    if abs(angle) > 50:  # nếu dự đoán góc trên 50 thì cho bẻ góc tối đa
+        if angle > 50:
+            angle = 50
+        elif angle < -50:
+            angle = -50
+        Car.setAngle(-angle * 0.8)
+    elif abs(angle) < 20:
+        Car.setAngle(-angle * 0.7)
+    else:
+        Car.setAngle(-angle * 0.8)
     Car.setSpeed_rad(speed)
 
 
@@ -99,9 +108,9 @@ def BTN3_Func(channel):
 
 def loop_and_detect(cam, trt_yolo, conf_th, vis):
     fps = 0.02
-    Car.regBTN(1, BTN1_Func)
+    # Car.regBTN(1, BTN1_Func)
     Car.setMotorMode(0)  # 0: controlled by speed, 1: controlled by distance.
-    Car.setSpeed_rad(20)
+    # Car.setSpeed_rad(20)
     while True:
 
         tic = time.time()
@@ -112,6 +121,7 @@ def loop_and_detect(cam, trt_yolo, conf_th, vis):
         # try:          
         image_segmentation = road_lines(np.copy(img), session=session_lane,
                                         inputname=input_name_lane)  # hàm segment làn đường trả về ảnh đã segment
+        cv2.imshow('Segmentation', image_segmentation)
         boxes, confs, clss = trt_yolo.detect(img,
                                              conf_th)  # trả về boxes: chứa tọa độ bounding box, phần trăm dự đoán, và phân lớp
         if len(confs) > 0.5:  # nếu nhận diện được biển báo
@@ -121,7 +131,12 @@ def loop_and_detect(cam, trt_yolo, conf_th, vis):
             classDetect = int(clss[index])
             clss = [clss[index]]
         controller = Controller(image_segmentation, clss, Car.getSpeed_rad())
-        angle, speed = controller()
+        angle, speed, trafficSigns = controller()
+        Car.OLED_Print('------------------------------------', str(speed), 3)
+        Car.OLED_Print('Angle: ', str(angle), 4)
+        Car.OLED_Print('Speed: ', str(speed), 5)
+        Car.OLED_Print('Sign: ', str(trafficSigns), 6)
+        Car.OLED_Print('------------------------------------', str(speed), 7)
         set_angle_speed(angle, speed)
         if SHOW_IMG:
             # hàm vẽ bounding box lên ảnh
