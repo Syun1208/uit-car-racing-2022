@@ -11,7 +11,7 @@ import time
 import cv2
 from HarwareControl.UITCar import UITCar
 import pycuda.autoinit
-from utils.yolo_classes import get_cls_dict
+from utils.yolo_classes import get_cls_dict, COCO_CLASSES_LIST
 from utils.display import show_fps
 from utils.visualization import BBoxVisualization
 from utils.yolo_with_plugins import TrtYOLO
@@ -108,6 +108,7 @@ def BTN3_Func(channel):
 
 def loop_and_detect(cam, trt_yolo, conf_th, vis):
     fps = 0.02
+    start_time_detect = time.time()
     # Car.regBTN(1, BTN1_Func)
     Car.setMotorMode(0)  # 0: controlled by speed, 1: controlled by distance.
     # Car.setSpeed_rad(20)
@@ -130,7 +131,17 @@ def loop_and_detect(cam, trt_yolo, conf_th, vis):
             confs = [confs[index]]
             classDetect = int(clss[index])
             clss = [clss[index]]
-        controller = Controller(image_segmentation, clss, Car.getSpeed_rad())
+        img, centers, class_TS, area = vis.draw_bboxes(
+            img, boxes, confs, clss, session=session_sign, inputname=input_name_sign)
+        if len(centers) > 0:  # nếu phát hiện đối tượng
+            # phải sau 2s so với lần xử lý biển báo trước thì mới cho xử lý biển báo tiếp theo
+            if time.time() - start_time_detect > 2 and area > 2400:
+                if class_TS == COCO_CLASSES_LIST.index('trai'):
+                    print('trai')
+                elif class_TS == COCO_CLASSES_LIST.index('thang'):
+                    print('thang')
+                start_time_detect = time.time()
+        controller = Controller(image_segmentation, class_TS, Car.getSpeed_rad())
         angle, speed, trafficSigns = controller()
         Car.OLED_Print('------------------------------------', str(speed), 3)
         Car.OLED_Print('Angle: ', str(angle), 4)
