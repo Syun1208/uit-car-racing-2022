@@ -24,7 +24,7 @@ def CM2Rad(cm):
     return round(cm/(_WheelDiameter/2),2)
 
 #global variable
-Car_MaxAngle = 90
+Car_MaxAngle = 50
 Car_MaxSpeed_rad = 28
 Car_MaxSpeed_cm = Rad2CM(Car_MaxSpeed_rad)
 ServoChannel = 0
@@ -38,7 +38,7 @@ _ServoOEPin = "DAP4_SCLK"
 _BTNBoucneTime = 1000
 _WheelDiameter = 6.5    #Unit: cm
 
-_MotorUpdateTime = 0.01 # Unit Seconds
+_MotorUpdateTime = 0.05 # Unit Seconds
 _SerialTimeout  = 0.1
 class UITCar:
     #private variable:
@@ -363,13 +363,15 @@ class UITCar:
         self.__serial_port.write(buff)
 
     def __motorReqData(self):
-            start = time.time()
+            
             Lenh = bytearray("N1 O G1 \n","ascii")
             with self.__MotorLock:
                 self.__serial_port.write(Lenh)
                 # self.__serial_port.timeout = 0.01
-                inf = self.__serial_port.read_until("  ")
-            # print("Read Cost Time ", time.time()- start)
+                # start = time.time()
+                inf = self.__serial_port.read_until(bytearray("     ", "ascii"))
+                # print("Read data ", inf)
+                # print("Read Cost Time ", time.time()- start)
             # print("inf ", inf)
             if(inf != None):
                 try:
@@ -384,7 +386,8 @@ class UITCar:
                     self.__MotorErr = DataSplit[4][0:]
                 except:
                     with self.__MotorLock:
-                        self.Motor_ClearErr()
+                        # self.Motor_ClearErr()
+                        pass
             # print("Req Cost Time ", time.time()- start)
             # Tinh van toc m/s  
             # Bán kính bánh => Chu vi = 2 * bán kính * 3.14
