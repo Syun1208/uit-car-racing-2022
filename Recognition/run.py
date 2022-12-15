@@ -67,8 +67,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description=desc)
     #model yolo mặc định 6 class
     parser.add_argument(
-        '-c', '--category_num', type=int, default=6,
-        help='number of object categories [6]')
+        '-c', '--category_num', type=int, default=5,
+        help='number of object categories [5]')
     #chọn model
     parser.add_argument(
         '-m', '--model', type=str, default='yolo_new-416',
