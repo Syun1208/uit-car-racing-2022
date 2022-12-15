@@ -1,6 +1,5 @@
 
 
-
 import numpy as np
 import cv2
 
@@ -59,7 +58,7 @@ def draw_boxed_text(img, text, topleft, color):
     cv2.putText(patch, text, (margin+1, h-margin-2), FONT, TEXT_SCALE,
                 WHITE, thickness=TEXT_THICKNESS, lineType=cv2.LINE_8)
     cv2.rectangle(patch, (0, 0), (w-1, h-1), BLACK, thickness=1)
-    w = min(w, img_w - topleft[0]) 
+    w = min(w, img_w - topleft[0])
     h = min(h, img_h - topleft[1])
 
     roi = img[topleft[1]:topleft[1]+h, topleft[0]:topleft[0]+w, :]
@@ -78,45 +77,26 @@ class BBoxVisualization():
         self.cls_dict = cls_dict
         self.colors = gen_colors(len(cls_dict))
 
-    def draw_bboxes(self, img, boxes, confs, clss,session,inputname):
+    def draw_bboxes(self, img, boxes, confs, clss, session, inputname):
         """vẽ bounding boxes."""
-        centers=[]
-        cll=-1
-        prediction=-1
-        area=-1
+        area = 0
+        cl = -1
         for bb, cf, cl in zip(boxes, confs, clss):
             cl = int(cl)
-            cll=cl
-            
             x_min, y_min, x_max, y_max = bb[0], bb[1], bb[2], bb[3]
-            # if cl == 2 or cl ==3 or cl == 4:          #nếu là đi thẳng, quẹo trái, quẹo phải thì phải kiểm trả 1 model CNN nữa để nhận diện
-
-            ##------verify-------------
-            X_test=img[y_min:y_max,x_min:x_max]
-            X_test=cv2.resize(X_test,(30, 30))
+            X_test = img[y_min:y_max, x_min:x_max]
+            X_test = cv2.resize(X_test, (30, 30))
             X_test = X_test.astype('float32')/255
-            X_test = X_test.reshape(1,30,30,3)
-            
-            prediction = session.run(None,{inputname:X_test})
-            prediction = np.squeeze(prediction) 
-            cl =np.argmax(prediction)
-            # cl = int(cl)
-            cll=cl
-            ##-------------------------
+            X_test = X_test.reshape(1, 30, 30, 3)
+
+            prediction = session.run(None, {inputname: X_test})
+            prediction = np.squeeze(prediction)
+            cl = np.argmax(prediction)
             color = self.colors[cl]
             cv2.rectangle(img, (x_min, y_min), (x_max, y_max), color, 2)
             txt_loc = (max(x_min+2, 0), max(y_min+2, 0))
             cls_name = self.cls_dict.get(cl, 'CLS{}'.format(cl))
             txt = '{} {:.2f}'.format(cls_name, cf)
             img = draw_boxed_text(img, txt, txt_loc, color)
-            c=y_max-y_min
-            d=x_max-x_min
-            area=c*d
-            # if (c/d<1.5 or d/c <1.5)and c*d >6 and c*d <40000:
-            x=int((x_min+ x_max)/2.0)
-            y=int((y_min+y_max)/2.0)
-            b = np.array([[x], [y]])
-            centers.append(np.round(b))
-
-        return img,centers,cll,area
-        
+            area = (x_max-x_min)*(y_max-y_min)
+        return img, area, cl
