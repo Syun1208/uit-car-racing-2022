@@ -1,0 +1,5 @@
+go straight
+turn left
+turn right
+not left
+not right
