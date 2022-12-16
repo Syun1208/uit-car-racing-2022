@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 import string
 import numpy as np
+
+import board
+import busio
+
 from adafruit_servokit import ServoKit
-from threading import Thread
+from threading import Lock
 import threading
 import time
 
@@ -12,15 +16,22 @@ import socket
 from pathlib import Path
 from PIL import Image
 
+from luma.core.interface.serial import i2c as LumaI2C
 import luma.oled.device as OledDevice
 from luma.core.render import canvas
 import Jetson.GPIO as GPIO
 
+_WheelDiameter = 6.5
+def Rad2CM(rad):
+    return round(rad*(_WheelDiameter/2),2)
+
+def CM2Rad(cm):
+    return round(cm/(_WheelDiameter/2),2)
 
 #global variable
-Car_MaxAngle = 90
-Car_MaxSpeed_rad = 60
-Car_MaxSpeed_cm = 72
+Car_MaxAngle = 50
+Car_MaxSpeed_rad = 28
+Car_MaxSpeed_cm = Rad2CM(Car_MaxSpeed_rad)
 ServoChannel = 0
 
 _but1_pin = "UART2_RTS"  #17
@@ -28,57 +39,43 @@ _but2_pin = "SPI2_SCK"   #27
 _but3_pin = "LCD_TE"     #22
 
 _ServoOEPin = "DAP4_SCLK"
-def set90_degree_angles(Car,dir_):
-    # Car.setSpeed_cm(50)
-    start = time.time()
-    while(time.time() - start <= 0.6):
-        Car.setSpeed_cm(50)
-        Car.setAngle(0)
-        # pass
 
-    # Car.setAngle(50)
-    start = time.time()
-    if dir_=='left':
-        while(time.time() - start <= 2.1):
-            Car.setAngle(40)
-            Car.setSpeed_cm(70)
-    if dir_=='right':
-        while (time.time() - start <= 2.1):
-            Car.setAngle(-40)
-            Car.setSpeed_cm(70)
-    
-    # start = time.time()
-    # while (time.time() - start <= 0.2):
-    #     Car.setSpeed_cm(50)
-    #     Car.setAngle(0)
+_BTNBoucneTime = 1000
+_WheelDiameter = 6.5    #Unit: cm
 
-
-
+_MotorUpdateTime = 0.05 # Unit Seconds
+_SerialTimeout  = 0.1
 class UITCar:
     #private variable:
-    __kit = ServoKit(channels=16)   #servo
+    __kit = ServoKit(channels=16, i2c=busio.I2C(board.SCL_1,board.SDA_1))   #servo
     __serial_port = serial.Serial() #motor
-    __device = OledDevice.sh1106()  #oled
+    __OledI2C = LumaI2C(port = 0, address = 0x3C)
+    __device = OledDevice.sh1106(__OledI2C)  #oled
     __BTN = [_but1_pin,_but2_pin,_but3_pin]
     __OLED_text = ['', '', '', '','']
     __OLED_line = [3, 4, 5, 6, 7]
     __OLED_left = [1, 1, 1, 1, 1]
     __is_Print  = [-1, -1, -1, -1, -1]
-    __vel   =   0
-    __dong  =   0
-    __err   = ""
+    __MotorPos = 0          #Unit:   Rad
+    __MotorVel   =   0      #Unit:   Rad
+    __MotorCurrent  =   0
+    __MotorErr   = ""
     __MotorMode = 0
-    
+    __MotorLock = Lock()
     def __init__(self) :
         self.__Button_Init()
         self.__Oled_Init()
         self.__Servo_Init()
+        self.button = 0
+        print("Start Motor INit")
         self.__Motor_Init()
+        print("End Motor Init")
 
     def __del__(self) :
         print("Del object")
         self.setAngle(0)
         self.setSpeed_rad(0)
+
         self.__ThreadIsKill = True
         
     def __Oled_Init(self, contrast = 255):
@@ -111,30 +108,33 @@ class UITCar:
         GPIO.setup(self.__BTN, GPIO.IN)
         print("Done Button setup")
         
-        GPIO.add_event_detect(self.__BTN[0], GPIO.FALLING, self._Button1_Pressed)
-        GPIO.add_event_detect(self.__BTN[1], GPIO.FALLING, self._Button2_Pressed)
-        GPIO.add_event_detect(self.__BTN[2], GPIO.FALLING, self._Button3_Pressed)
+        GPIO.add_event_detect(self.__BTN[0], GPIO.FALLING, self._Button1_Pressed,_BTNBoucneTime)
+        GPIO.add_event_detect(self.__BTN[1], GPIO.FALLING, self._Button2_Pressed,_BTNBoucneTime)
+        GPIO.add_event_detect(self.__BTN[2], GPIO.FALLING, self._Button3_Pressed,_BTNBoucneTime)
 
     
     def __Motor_Init(self):
-        self.__serial_port.port="/dev/ttyTHS1"
+        self.__MotorLock.acquire()
+        self.__serial_port.port="/dev/ttyUSB0"
         self.__serial_port.baudrate=115200
         self.__serial_port.bytesize=serial.EIGHTBITS
         self.__serial_port.parity=serial.PARITY_NONE
         self.__serial_port.stopbits=serial.STOPBITS_ONE
-        self.__serial_port.timeout=1
+        self.__serial_port.timeout=_SerialTimeout
         self.__serial_port.open()
 
         self.__motorChangeControl()
         self.__motorDisableProtect()
         self.__motorUnlock()
-        self.setMotorMode(0)
         self.__motorSaveRestart()
-        time.sleep(5)
+        time.sleep(2)
 
         self.__motorNoACK()
         self.__motorUnlock()
-        self.setSpeed_rad(0)        
+        self.__MotorLock.release()   
+        self.setMotorMode(0)
+
+        self.setSpeed_rad(0) 
         print("Motor Setup Done")
         thr = threading.Thread(target=self.thr_motor_recv)
         thr.start()
@@ -144,6 +144,7 @@ class UITCar:
             -Biến:None
             -Trả về:None
         """
+        self.button = 1
         print("you are pressing button 1")
 
     def _Button2_Pressed(self, channel):
@@ -151,6 +152,7 @@ class UITCar:
             -Biến:None
             -Trả về:None
         """
+        self.button = 2
         print("you are pressing button 2")
 
     def _Button3_Pressed(self, channel):
@@ -158,6 +160,7 @@ class UITCar:
             -Biến:None
             -Trả về:None
         """
+        self.button = 3
         print("you are pressing button 3")
 
     def __OLED_Display(self):
@@ -247,7 +250,7 @@ class UITCar:
             self.__is_Print[i] = -1
         self.__device.clear()
 
-    def setAngle(self,CarAngle  ):
+    def setAngle(self,CarAngle):
         """- Chức năng: Điều chỉnh góc bẻ lái\n
         - Biến:\n
             + CarAngle(int): Giá trị góc bẻ lái từ -60 -> 60 \n
@@ -271,32 +274,33 @@ class UITCar:
     def setSpeed_rad(self, CarSpeed):
         """- Chức năng: Điều chỉnh vận tốc của động cơ theo đơn vị rad/s\n
         - Biến:\n
-            + CarSpeed(float): Giá trị vận tốc của động cơ từ -20 -> 20 \n
+            + CarSpeed(float): Giá trị vận tốc của động cơ từ \n
         - Trả về: None\n
         """
         if self.__MotorMode == 0:
             if abs(CarSpeed) > Car_MaxSpeed_rad:
-                print("CarSpeed(rad/s) out of range -20 to 20")
+                print("CarSpeed(rad/s) out of range")
             CarSpeed = np.clip(CarSpeed, -Car_MaxSpeed_rad, Car_MaxSpeed_rad)
             CarSpeed = np.round(CarSpeed,2)
             ID = 1
-            inf = ""
-            Buff = bytearray("N%i v%i a600 \n"%(ID, CarSpeed),"ascii")  
-            self.__serial_port.write(Buff)
+            Buff = bytearray("N%i v%.2f a50\r\n"%(ID, CarSpeed),"ascii")  
+            # print("Set speed Buff ", Buff)
+            with self.__MotorLock:
+                self.__serial_port.write(Buff)
             pass
         else:
             raise ValueError("Car is in Position mode. Change mode to use.")
     def setSpeed_cm(self, CarSpeed: float):
         """- Chức năng: Điều chỉnh vận tốc của động cơ theo đơn vị cm/s\n
         - Biến:\n
-            + CarSpeed(float): Giá trị vận tốc của động cơ từ -58 -> 58 \n
+            + CarSpeed(float): Giá trị vận tốc của động cơ \n
         - Trả về: None\n
         """
         if self.__MotorMode == 0:
             if abs(CarSpeed) > Car_MaxSpeed_cm:
-                print("CarSpeed(cm/s) out of range -58 to 58")
+                print("CarSpeed(cm/s) out of range")
             CarSpeed = np.clip(CarSpeed, -Car_MaxSpeed_cm, Car_MaxSpeed_cm)
-            CarSpeed_rad = (CarSpeed*2*3.14)/18.212
+            CarSpeed_rad = CM2Rad(CarSpeed)
 
             self.setSpeed_rad(CarSpeed_rad)
         else: 
@@ -309,30 +313,35 @@ class UITCar:
         """
         if mode == 0:
             self.__MotorMode = 0
-            unl = bytearray("N1 $004=3 \n","ascii")
-            self.__serial_port.write(unl)
+            unl = bytearray("N1 $004=3\n","ascii")
+            # unl = bytearray("N1 O M3 \n","ascii")
         elif mode == 1:
             self.__MotorMode = 1
-            unl = bytearray("N1 $004=2 \n","ascii")
-            self.__serial_port.write(unl)
+            unl = bytearray("N1 $004=2\n","ascii")
+            # unl = bytearray("N1 O M2 \n","ascii")
         else:
             raise ValueError("mode khong hop le")
+        with self.__MotorLock:
+            self.__serial_port.write(unl)
         print("Set mode ", self.__MotorMode)
     
-    def SetPosition_rad(self, position, velo):
-        if self.__MotorMode == 1: 
-            td = bytearray("N1 P%i v%i \n"%(position, velo),"ascii")
-            self.__serial_port.write(td)
+    def setPosition_rad(self, position, velo):
+        if self.__MotorMode == 1:
+            position+= self.getPosition_rad()
+            td = bytearray("N1 p%.2f v%.2f a50\n"%(position, velo),"ascii")
+            with self.__MotorLock:
+                self.__serial_port.write(td)
         else:
             raise ValueError("Car is in Speed mode. Change mode to use.")
         
-    def SetPosition_cm(self, position, velo):
+    def setPosition_cm(self, position, velo):
         if self.__MotorMode == 1:
-            pos_rad = (position*2*3.14)/18.212
-            velo_rad = (velo*2*3.14)/18.212
-            td = bytearray("N1 P%i v%i \n"%(pos_rad, velo_rad),"ascii")
-            # print("Buffer: ",td)
-            self.__serial_port.write(td)
+            if abs(velo) > Car_MaxSpeed_cm:
+                print("CarSpeed(cm/s) out of range")
+            velo = np.clip(velo, -Car_MaxSpeed_cm, Car_MaxSpeed_cm)
+            veloRad = CM2Rad(velo)
+            positionRad = CM2Rad(position)
+            self.setPosition_rad(positionRad, veloRad)
         else:
             raise ValueError("Car is in Speed mode. Change mode to use.")
     
@@ -341,14 +350,14 @@ class UITCar:
         while True:
             self.__motorReqData()
             self.__OLED_Display()
-            time.sleep(0.2)
+            time.sleep(_MotorUpdateTime)
             
     def __motorUnlock(self):
-        unl = bytearray("N1 O U C r \n","ascii")
+        unl = bytearray("N1 O U\n","ascii")
         self.__serial_port.write(unl)
     
     def __motorNoACK(self):
-        buff = bytearray("N1 O K0 \n","ascii")
+        buff = bytearray("N1 O K0\n","ascii")
         self.__serial_port.write(buff)
 
     def __motorChangeControl(self):
@@ -364,56 +373,78 @@ class UITCar:
         self.__serial_port.write(buff)
 
     def __motorReqData(self):
+            
             Lenh = bytearray("N1 O G1 \n","ascii")
-            self.__serial_port.write(Lenh)
-            inf = self.__serial_port.read_until("\r")
+            with self.__MotorLock:
+                self.__serial_port.write(Lenh)
+                # self.__serial_port.timeout = 0.01
+                # start = time.time()
+                inf = self.__serial_port.read_until(bytearray("     ", "ascii"))
+                # print("Read data ", inf)
+                # print("Read Cost Time ", time.time()- start)
             # print("inf ", inf)
             if(inf != None):
                 try:
                     DataSplit = inf.split()
+                    # Position Rad
+                    self.__MotorPos = round(float(DataSplit[1][1:]),2)
                     # Van toc rad/s
-                    self.__vel = round(float(DataSplit[2][1:]))
+                    self.__MotorVel = round(float(DataSplit[2][1:]),2)
                     #Dong mA
-                    self.__dong = round(float(DataSplit[3][1:]))
+                    self.__MotorCurrent = round(float(DataSplit[3][1:]),2)
                     #err 
-                    self.__err = DataSplit[4][0:]
+                    self.__MotorErr = DataSplit[4][0:]
                 except:
-                    self.Motor_ClearErr()
+                    with self.__MotorLock:
+                        # self.Motor_ClearErr()
+                        pass
+            # print("Req Cost Time ", time.time()- start)
             # Tinh van toc m/s  
             # Bán kính bánh => Chu vi = 2 * bán kính * 3.14
             # Một vòng thì sẽ đi hết ... <Chu vi bánh> => vt*chu vi bánh
-
+    def getPosition_rad(self) -> float:
+        """- Chức năng: Lấy giá trị vị trí hiện tại của động cơ theo đơn vị rad\n
+        - Biến:     None \n
+        - Trả về:   Giá trị vận tốc hiện tại\n
+        """
+        return self.__MotorPos
+    def getPosition_cm(self) -> float:
+        """- Chức năng: Lấy giá trị vận tốc hiện tại của động cơ theo đơn vị cm\n
+        - Biến:     None \n
+        - Trả về:   Giá trị vận tốc hiện tại\n
+        """
+        return Rad2CM(self.getPosition_rad())
     def getSpeed_rad(self) -> float:
         """- Chức năng: Lấy giá trị vận tốc hiện tại của động cơ theo đơn vị rad/s\n
         - Biến:     None \n
         - Trả về:   Giá trị vận tốc hiện tại\n
         """
-        return self.__vel
+        return self.__MotorVel
     def getSpeed_round(self) -> float:
         """- Chức năng: Lấy giá trị vận tốc hiện tại của động cơ theo đơn vị vòng/s\n
         - Biến:     None \n
         - Trả về:   Giá trị vận tốc hiện tại\n
         """
-        return self.__vel/(2*3.14)
+        return self.__MotorVel/(2*3.14)
     
     def getSpeed_cm(self) -> float:
         """- Chức năng: Lấy giá trị vận tốc hiện tại của động cơ theo đơn vị cm/s\n
         - Biến:     None \n
         - Trả về:   Giá trị vận tốc hiện tại\n
         """
-        return round(self.getSpeed_round()*18.212, 2)
+        return Rad2CM(self.getSpeed_rad())
 
     def getMotor_Current(self) ->float:
         """
         Hàm lấy dòng tiêu thụ của động cơ
         """
-        return self.__dong
+        return self.__MotorCurrent
 
     def getMotor_Err(self):
         """
         Hàm lấy lỗi của động cơ
         """
-        return self.__err
+        return self.__MotorErr
 
     def Motor_ClearErr(self):
         cle = bytearray("N1 O C \n","ascii")
@@ -434,6 +465,5 @@ class UITCar:
 
     def regBTN(self, BTNID, Function):
         GPIO.remove_event_detect(self.__BTN[BTNID-1])
-        GPIO.add_event_detect(self.__BTN[BTNID-1], GPIO.RISING, Function)
+        GPIO.add_event_detect(self.__BTN[BTNID-1], GPIO.FALLING, Function, _BTNBoucneTime)
 
-    

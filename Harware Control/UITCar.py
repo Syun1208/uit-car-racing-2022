@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 import string
 import numpy as np
+
+import board
+import busio
+
 from adafruit_servokit import ServoKit
 from threading import Lock
 import threading
@@ -12,6 +16,7 @@ import socket
 from pathlib import Path
 from PIL import Image
 
+from luma.core.interface.serial import i2c as LumaI2C
 import luma.oled.device as OledDevice
 from luma.core.render import canvas
 import Jetson.GPIO as GPIO
@@ -42,9 +47,10 @@ _MotorUpdateTime = 0.05 # Unit Seconds
 _SerialTimeout  = 0.1
 class UITCar:
     #private variable:
-    __kit = ServoKit(channels=16)   #servo
+    __kit = ServoKit(channels=16, i2c=busio.I2C(board.SCL_1,board.SDA_1))   #servo
     __serial_port = serial.Serial() #motor
-    __device = OledDevice.sh1106()  #oled
+    __OledI2C = LumaI2C(port = 0, address = 0x3C)
+    __device = OledDevice.sh1106(__OledI2C)  #oled
     __BTN = [_but1_pin,_but2_pin,_but3_pin]
     __OLED_text = ['', '', '', '','']
     __OLED_line = [3, 4, 5, 6, 7]
@@ -60,6 +66,7 @@ class UITCar:
         self.__Button_Init()
         self.__Oled_Init()
         self.__Servo_Init()
+        self.button = 0
         print("Start Motor INit")
         self.__Motor_Init()
         print("End Motor Init")
@@ -108,7 +115,7 @@ class UITCar:
     
     def __Motor_Init(self):
         self.__MotorLock.acquire()
-        self.__serial_port.port="/dev/ttyTHS1"
+        self.__serial_port.port="/dev/ttyUSB0"
         self.__serial_port.baudrate=115200
         self.__serial_port.bytesize=serial.EIGHTBITS
         self.__serial_port.parity=serial.PARITY_NONE
@@ -137,6 +144,7 @@ class UITCar:
             -Biến:None
             -Trả về:None
         """
+        self.button = 1
         print("you are pressing button 1")
 
     def _Button2_Pressed(self, channel):
@@ -144,6 +152,7 @@ class UITCar:
             -Biến:None
             -Trả về:None
         """
+        self.button = 2
         print("you are pressing button 2")
 
     def _Button3_Pressed(self, channel):
@@ -151,6 +160,7 @@ class UITCar:
             -Biến:None
             -Trả về:None
         """
+        self.button = 3
         print("you are pressing button 3")
 
     def __OLED_Display(self):
@@ -457,4 +467,3 @@ class UITCar:
         GPIO.remove_event_detect(self.__BTN[BTNID-1])
         GPIO.add_event_detect(self.__BTN[BTNID-1], GPIO.FALLING, Function, _BTNBoucneTime)
 
-    

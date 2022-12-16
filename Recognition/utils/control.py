@@ -72,9 +72,9 @@ def road_lines(image, session, inputname):
 	prediction = prediction.reshape(80, 160)
  # print(prediction.shape)
 	prediction = prediction.astype(np.uint8)
-	cont, hier = cv2.findContours(
-		prediction, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+	# cont, hier = cv2.findContours(
+	# 	prediction, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
-	copyImage, steering, center = AngleCal(prediction)
+	# copyImage, steering, center = AngleCal(prediction)
 
-	return copyImage, steering, center
+	return prediction

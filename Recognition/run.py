@@ -10,6 +10,7 @@ import sys
 import time
 import cv2
 import pycuda.autoinit
+from deploy.controller import *
 from utils.yolo_classes import get_cls_dict
 from utils.display import show_fps
 from utils.visualization import BBoxVisualization
@@ -59,6 +60,13 @@ def gstreamer_pipeline(
 # import copy
 
 
+def remove_small_contours(image):
+    image_binary = np.zeros((image.shape[0], image.shape[1]), np.uint8)
+    contours = cv2.findContours(image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)[0]
+    mask = cv2.drawContours(image_binary, [max(contours, key=cv2.contourArea)], -1, (255, 255, 255), -1)
+    image_remove = cv2.bitwise_and(image, image, mask=mask)
+    return image_remove
+
 def parse_args():
     """Parse input arguments."""
     desc = ('Capture and display live camera video, while doing '
@@ -71,10 +79,18 @@ def parse_args():
         help='number of object categories [5]')
     #chọn model
     parser.add_argument(
-        '-m', '--model', type=str, default='yolo_new-416',
+        '-m', '--model', type=str, default='update-416',
         help=('model object detection'))
     args = parser.parse_args()
     return args
+
+def set_angle(speed, angle):
+    if abs(angle) > 42:
+        if angle > 42:
+            angle = angle * 0.8
+        elif angle < -42:
+            angle = - angle * 0.8
+    return speed, angle
 
 
 def loop_and_detect(cam, trt_yolo, conf_th, vis):
@@ -83,7 +99,10 @@ def loop_and_detect(cam, trt_yolo, conf_th, vis):
     Car = UITCar.UITCar()
     Car.setMotorMode(0)
     Car.setAngle(0)
+    area = 0
+    cl = -1
     start_time_detect = time.time()
+    maxSpeed = 27.0
     imgs = os.listdir('warnup')
     for img in imgs:
         img = cv2.imread(os.path.join('warnup', img))
@@ -91,41 +110,59 @@ def loop_and_detect(cam, trt_yolo, conf_th, vis):
         _ = vis.draw_bboxes(
             img, boxes, confs, clss, session_sign, input_name_sign)
     print("done warnup")
+    i = 0
+    # if Car.button == 1:
+    start = time.time()
+    flag = False
+    while not flag:
+        Car.setSpeed_rad(maxSpeed)
+        if time.time() - start > 2:
+            flag = True
     while True:
-
         tic = time.time()
         img = cam.read()  # đọc ảnh từ camera
+        # cv2.imshow('Img', img)
         if img is None:
             print("None")
             break
         # try:
-        DAsegmetation, steering, center = road_lines(np.copy(
-            img), session=session_lane, inputname=input_name_lane)  # hàm segment làn đường trả về ảnh đã segment
-
+        image_segmentation= road_lines(np.copy(img), session=session_lane, inputname=input_name_lane)  # hàm segment làn đường trả về ảnh đã segment
+        image_segmentation = remove_small_contours(image_segmentation)
+        # cv2.imshow('Mask', image_segmentation)
         # trả về boxes: chứa tọa độ bounding box, phần trăm dự đoán, và phân lớp
         boxes, confs, clss = trt_yolo.detect(img, conf_th)
-        if(len(confs) > 0):  # nếu nhận diện được biển báo
-            #chỉ lấy ra đối tượng có phần trăm dự đoán cao nhất
-            index = np.argmax(confs)
-            confs = [confs[index]]
-            classDetect = int(clss[index])
-            clss = [clss[index]]
-
-        img, area, cl = vis.draw_bboxes(
+        if i % 10 == 0:
+            area, cl = vis.draw_bboxes(
             img, boxes, confs, clss, session_sign, input_name_sign)
-
-        if SHOW_IMG:
-            # hàm vẽ bounding box lên ảnh
-
-            toc = time.time()
-            fps = 1.0 / (toc - tic)
-            img = show_fps(img, fps)
-            img[:DAsegmetation.shape[0], img.shape[1] -
-                DAsegmetation.shape[1]:, :] = DAsegmetation
-            cv2.imshow('merge', img)
+        i += 1
+        '''-------------------------Controller-----------------------'''
+        controller = Controller(image_segmentation, maxSpeed, cl, Car, area)
+        angle, speed = controller()   
+        speed, angle = set_angle(speed, angle)   
+        Car.setSpeed_rad(speed)
+        Car.setAngle(angle * 0.83)
+        print('FPS: ',  1.0 /(time.time() - tic))
+        print('Speed: ', speed)
+        print('Angle: ', angle)
+        Car.OLED_Print('Speed: {}'.format(speed), 1)
+        Car.OLED_Print('Angle: {}'.format(angle), 2)
+        Car.OLED_Print('FPS: {}'.format(1.0 / (time.time() - tic)), 3)
+        '''-------------------------Controller-----------------------'''
         key = cv2.waitKey(1)
         if key == 27:  # ESC key: quit program
             break
+    # else:
+    #     Car.setSpeed_rad(0)
+    #     Car.setAngle(0)
+        # if SHOW_IMG:
+        #     # hàm vẽ bounding box lên ảnh
+
+        #     toc = time.time()
+        #     fps = 1.0 / (toc - tic)
+        #     img = show_fps(img, fps)
+        #     img[:image_segmentation.shape[0], img.shape[1] -
+        #         image_segmentation.shape[1]:, :] = image_segmentation
+        #     cv2.imshow('merge', img)
 
         # except Exception as inst:
         #     print(type(inst))    # the exception instance
