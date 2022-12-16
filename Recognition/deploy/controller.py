@@ -1,4 +1,4 @@
-# from deploy.image_processing import imageProcessing, trafficSignsController
+from deploy.image_processing import trafficSignsController
 import time
 import numpy as np
 
@@ -7,10 +7,10 @@ error_arr = np.zeros(5)
 list_angle = np.zeros(5)
 
 
-class Controller:
-    def __init__(self, mask, maxSpeed, trafficSigns, Car, area):
+class Controller(trafficSignsController):
+    def __init__(self, mask, maxSpeed, trafficSigns, Car, area, confs):
         self.trafficSigns = list(['go straight','turn left','turn right','not left', 'not right', 'none'])[int(trafficSigns)]
-        #trafficSignsController.__init__(self, image, self.trafficSigns, area)
+        trafficSignsController.__init__(self, mask, self.trafficSigns, area, confs)
         self.mask = mask
         self.Car = Car
         self.current_speed = self.Car.getSpeed_rad()
@@ -22,7 +22,7 @@ class Controller:
         else:
             return speed
 
-    def findingLane(self, scale=21.5):
+    def findingLane(self, scale=24):
         arr_normal = []
         height = int(self.mask.shape[0] - scale)
         lineRow = self.mask[height, :]
@@ -35,16 +35,16 @@ class Controller:
         maxLane = max(arr_normal)
         center = int((minLane + maxLane) / 2)
         width = maxLane - minLane
-        if width < 55:
-            if center < int(self.mask.shape[1] / 2):
-                center -= 55 - width
-            else:
-                center += 55 - width
+        # if width < 55:
+        #     if center < int(self.mask.shape[1] / 2):
+        #         center -= 55 - width
+        #     else:
+        #         center += 55 - width
         error = int(self.mask.shape[1] / 2) - center
-        return error, minLane, maxLane
+        return error
 
     @staticmethod
-    def __PID(error, scale=1, p=1.4, i=0, d=0.01):
+    def __PID(error, scale=1, p=1.2, i=0, d=0):
         global t
         global error_arr
         error_arr[1:] = error_arr[0:-1]
@@ -55,8 +55,8 @@ class Controller:
         D = (error - error_arr[1]) / delta_t * d
         I = np.sum(error_arr) * delta_t * i
         angle = P + I + D
-        if abs(angle) > 42:
-            angle = np.sign(angle) * 42
+        if abs(angle) > 44:
+            angle = np.sign(angle) * 44
         return int(angle) * scale
 
     def __speedByError(self, error):
@@ -64,16 +64,19 @@ class Controller:
         return predSpeed
 
     def __speedByAngle(self, angle):
-        predSpeed = int(abs(angle) * - 0.2 + self.maxSpeed)
+        predSpeed = int(abs(angle) * - 0.09 + self.maxSpeed)
         return predSpeed
 
     def __call__(self, *args, **kwargs):
-        error, minLane, maxLane = self.findingLane()
-        print('Traffic Sign: ', self.trafficSigns)
+        error = self.findingLane()
+        # print('Traffic Sign: ', self.trafficSigns)
         self.Car.OLED_Print('Traffic Sign: {}'.format(self.trafficSigns), 0)
         angle = self.__PID(error)
         speed = self.__speedByError(error)
-        # if abs(minLane) < 20 or abs(maxLane) > 120:
-        #     speed = 18
+        if self.trafficSigns != 'none':
+            print(self.trafficSigns)
+            angle, speed = trafficSignsController.__call__(self)
+        if abs(angle) > 25:
+            speed = 13.6
         # speed = self.__reduceSpeed(speed)
         return angle, speed

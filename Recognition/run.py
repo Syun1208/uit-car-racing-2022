@@ -85,11 +85,11 @@ def parse_args():
     return args
 
 def set_angle(speed, angle):
-    if abs(angle) > 42:
-        if angle > 42:
-            angle = angle * 0.8
-        elif angle < -42:
-            angle = - angle * 0.8
+    if abs(angle) > 44:
+        if angle > 44:
+            angle = 44
+        elif angle < -44:
+            angle = 44
     return speed, angle
 
 
@@ -99,10 +99,11 @@ def loop_and_detect(cam, trt_yolo, conf_th, vis):
     Car = UITCar.UITCar()
     Car.setMotorMode(0)
     Car.setAngle(0)
+    Car.setSpeed_rad(0)
     area = 0
     cl = -1
     start_time_detect = time.time()
-    maxSpeed = 27.0
+    maxSpeed = 20
     imgs = os.listdir('warnup')
     for img in imgs:
         img = cv2.imread(os.path.join('warnup', img))
@@ -116,41 +117,43 @@ def loop_and_detect(cam, trt_yolo, conf_th, vis):
     flag = False
     while not flag:
         Car.setSpeed_rad(maxSpeed)
-        if time.time() - start > 2:
+        if time.time() - start > 3:
             flag = True
     while True:
         tic = time.time()
         img = cam.read()  # đọc ảnh từ camera
-        # cv2.imshow('Img', img)
+        cv2.imshow('Img', img)
         if img is None:
             print("None")
             break
         # try:
         image_segmentation= road_lines(np.copy(img), session=session_lane, inputname=input_name_lane)  # hàm segment làn đường trả về ảnh đã segment
         image_segmentation = remove_small_contours(image_segmentation)
-        # cv2.imshow('Mask', image_segmentation)
+        cv2.imshow('Mask', image_segmentation)
         # trả về boxes: chứa tọa độ bounding box, phần trăm dự đoán, và phân lớp
         boxes, confs, clss = trt_yolo.detect(img, conf_th)
-        if i % 10 == 0:
-            area, cl = vis.draw_bboxes(
-            img, boxes, confs, clss, session_sign, input_name_sign)
-        i += 1
+        area, cl = vis.draw_bboxes(
+        img, boxes, confs, clss, session_sign, input_name_sign)
         '''-------------------------Controller-----------------------'''
-        controller = Controller(image_segmentation, maxSpeed, cl, Car, area)
+        controller = Controller(image_segmentation, maxSpeed, cl, Car, area, confs)
         angle, speed = controller()   
         speed, angle = set_angle(speed, angle)   
         Car.setSpeed_rad(speed)
-        Car.setAngle(angle * 0.83)
-        print('FPS: ',  1.0 /(time.time() - tic))
-        print('Speed: ', speed)
-        print('Angle: ', angle)
+        Car.setAngle(angle)
+        # print('FPS: ',  1.0 /(time.time() - tic))
+        # print('Speed: ', speed)
+        # print('Angle: ', angle)
         Car.OLED_Print('Speed: {}'.format(speed), 1)
         Car.OLED_Print('Angle: {}'.format(angle), 2)
-        Car.OLED_Print('FPS: {}'.format(1.0 / (time.time() - tic)), 3)
+        Car.OLED_Print('BBox Area: {}'.format(area), 3)
+        Car.OLED_Print('Confidence: {}'.format(confs), 4)
         '''-------------------------Controller-----------------------'''
         key = cv2.waitKey(1)
         if key == 27:  # ESC key: quit program
             break
+    # else:
+    #     Car.setSpeed_rad(0)
+    #     Car.setAngle(0)
     # else:
     #     Car.setSpeed_rad(0)
     #     Car.setAngle(0)
