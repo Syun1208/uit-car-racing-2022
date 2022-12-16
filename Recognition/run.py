@@ -84,6 +84,13 @@ def loop_and_detect(cam, trt_yolo, conf_th, vis):
     Car.setMotorMode(0)
     Car.setAngle(0)
     start_time_detect = time.time()
+    imgs = os.listdir('warnup')
+    for img in imgs:
+        img = cv2.imread(os.path.join('warnup', img))
+        boxes, confs, clss = trt_yolo.detect(img, conf_th)
+        _ = vis.draw_bboxes(
+            img, boxes, confs, clss, session_sign, input_name_sign)
+    print("done warnup")
     while True:
 
         tic = time.time()
